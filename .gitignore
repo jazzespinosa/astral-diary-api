@@ -1,0 +1,8 @@
+#Service Account Keys
+/env/ServiceAccountKeys
+
+.vs/
+
+/bin
+
+/Data/data
