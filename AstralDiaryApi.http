@@ -1,6 +1,0 @@
-@AstralDiaryApi_HostAddress = http://localhost:5063
-
-GET {{AstralDiaryApi_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

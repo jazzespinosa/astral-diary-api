@@ -1,0 +1,15 @@
+﻿using AstralDiaryApi.Common.Interfaces;
+
+namespace AstralDiaryApi.Models.DTOs.Entries.Get
+{
+    public class GetDraftRequest { }
+
+    public class GetDraftResponse : BaseGetResponse
+    {
+        public string DraftId
+        {
+            get => Id;
+            set => Id = value;
+        }
+    }
+}
