@@ -4,6 +4,7 @@ using AstralDiaryApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AstralDiaryApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260316230834_AddedIsDeletedAndCheckConstraint")]
+    partial class AddedIsDeletedAndCheckConstraint
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -113,10 +116,6 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("timestamp")
                         .HasColumnName("modified_at");
 
-                    b.Property<int>("Mood")
-                        .HasColumnType("int")
-                        .HasColumnName("mood");
-
                     b.Property<string>("Title")
                         .HasColumnType("longtext")
                         .HasColumnName("title");
@@ -176,10 +175,6 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("timestamp")
                         .HasColumnName("modified_at");
 
-                    b.Property<int>("Mood")
-                        .HasColumnType("int")
-                        .HasColumnName("mood");
-
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp")
                         .HasColumnName("published_at");
@@ -200,8 +195,6 @@ namespace AstralDiaryApi.Migrations
 
                     b.HasIndex("EntityId");
 
-                    b.HasIndex("Mood");
-
                     b.HasIndex("UserId");
 
                     b.HasIndex("Title", "Content")
@@ -221,10 +214,6 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Avatar")
-                        .HasColumnType("longtext")
-                        .HasColumnName("avatar");
 
                     b.Property<string>("Email")
                         .IsRequired()

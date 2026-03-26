@@ -29,6 +29,9 @@ namespace AstralDiaryApi.Models.Entities
         [Column("content")]
         public string? Content { get; set; }
 
+        [Column("mood")]
+        public int Mood { get; set; }
+
         public User User { get; set; } // Navigation property
 
         public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
@@ -48,14 +51,12 @@ namespace AstralDiaryApi.Models.Entities
         private static int _sequence = 0;
         private static readonly object _lock = new object();
 
-        public static long GenerateDraftId()
+        public static string GenerateDraftId()
         {
             lock (_lock)
             {
-                _sequence = (_sequence + 1) % 100; // keep within 3 digits
-                return long.Parse(
-                    DateTime.UtcNow.ToString("yyyyMMddHHmmss") + _sequence.ToString("D3")
-                );
+                _sequence = (_sequence + 1) % 100; // 3 digits
+                return _sequence.ToString("D3") + DateTime.UtcNow.ToString("yyyyMMddHHmmssff");
             }
         }
     }

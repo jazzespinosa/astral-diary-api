@@ -12,10 +12,12 @@ namespace AstralDiaryApi.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IEntryService _entryService;
 
-        public UserController(IUserService userService)
+        public UserController(IUserService userService, IEntryService entryService)
         {
             _userService = userService;
+            _entryService = entryService;
         }
 
         [HttpPost("login")]
@@ -25,13 +27,54 @@ namespace AstralDiaryApi.Controllers
             if (!IsEmailVerified())
                 return BadRequest("Email is not verified.");
 
-            string firebaseUid = GetFirebaseUid();
+            var firebaseUid = GetFirebaseUid();
             var response = await _userService.LoginUser(firebaseUid, loginRequest);
             return Ok(response);
+        }
+
+        [HttpGet("get-user-info")]
+        [Authorize]
+        public async Task<IActionResult> GetUserInfo([FromQuery] DateOnly currentDate)
+        {
+            var userId = await GetUserId();
+
+            var response = await _userService.GetUserInfoAsync(userId, currentDate);
+            return Ok(response);
+        }
+
+        [HttpGet("get-mood-map")]
+        [Authorize]
+        public async Task<IActionResult> GetUserMoodMap()
+        {
+            var userId = await GetUserId();
+
+            var response = await _entryService.GetUserMoodMapAsync(userId);
+            return Ok(response);
+        }
+
+        [HttpPatch("save-avatar")]
+        [Authorize]
+        public async Task<IActionResult> SaveUserAvatar(
+            [FromBody] UpdateUserAvatarRequest updateUserAvatarRequest
+        )
+        {
+            var userId = await GetUserId();
+            var response = await _userService.UpdateUserAvatar(
+                userId,
+                updateUserAvatarRequest.Avatar
+            );
+
+            return Ok(new { avatar = response });
         }
 
         private bool IsEmailVerified() => User.FindFirst("email_verified")?.Value == "true";
 
         private string GetFirebaseUid() => User.FindFirst("user_id")?.Value ?? string.Empty;
+
+        private async Task<Guid> GetUserId()
+        {
+            var firebaseUid = GetFirebaseUid();
+            return await _userService.GetUserId(firebaseUid);
+        }
     }
 }

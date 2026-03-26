@@ -10,15 +10,19 @@ namespace AstralDiaryApi.Services.Interfaces
     public interface IDraftService
         : IBaseEntryService<
             Draft,
-            NewDraftRequest,
+            NewDraftRequestProcessed,
             NewDraftResponse,
             GetDraftResponse,
-            UpdateEntryRequest, // need to change for drafts
-            UpdateEntryResponse, // need to change for drafts
-            DeleteEntryRequest, // need to change for drafts
-            DeleteEntryResponse // need to change for drafts
+            UpdateDraftRequestProcessed,
+            UpdateDraftResponse
         >
     {
-        Task<List<GetDraftResponse>> GetDrafts(Guid userId);
+        Task<List<GetDraftResponse>> GetAllDrafts(Guid userId);
+        Task<GetDraftCountResponse> CountDraftsAsync(Guid userId);
+        Task<bool> DeleteDraft(Guid userId, string draftId);
+        Task<UpdateEntryResponse> PublishDraft(
+            Guid userId,
+            UpdateDraftRequestProcessed updateDraftRequest
+        );
     }
 }

@@ -29,8 +29,14 @@ namespace AstralDiaryApi.Models.Entities
         [Column("content")]
         public required string Content { get; set; }
 
+        [Column("mood")]
+        public int Mood { get; set; }
+
         [Column("published_at", TypeName = "timestamp")]
         public DateTime? PublishedAt { get; set; }
+
+        [Column("is_deleted")]
+        public bool IsDeleted { get; set; }
 
         [Column("deleted_at", TypeName = "timestamp")]
         public DateTime? DeletedAt { get; set; }
@@ -54,14 +60,12 @@ namespace AstralDiaryApi.Models.Entities
         private static int _sequence = 0;
         private static readonly object _lock = new object();
 
-        public static long GenerateEntryId()
+        public static string GenerateEntryId()
         {
             lock (_lock)
             {
-                _sequence = (_sequence + 1) % 100; // keep within 3 digits
-                return long.Parse(
-                    DateTime.UtcNow.ToString("yyyyMMddHHmmss") + _sequence.ToString("D3")
-                );
+                _sequence = (_sequence + 1) % 100; // 3 digits
+                return _sequence.ToString("D3") + DateTime.UtcNow.ToString("yyyyMMddHHmmssff");
             }
         }
     }

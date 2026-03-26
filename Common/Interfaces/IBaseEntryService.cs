@@ -1,4 +1,7 @@
-﻿namespace AstralDiaryApi.Common.Interfaces
+﻿using AstralDiaryApi.Models.DTOs.Entries.Get;
+using AstralDiaryApi.Models.DTOs.Entries.New;
+
+namespace AstralDiaryApi.Common.Interfaces
 {
     public interface IBaseEntryService<
         TEntity,
@@ -6,15 +9,11 @@
         TNewResponse,
         TGetResponse,
         TUpdateRequest,
-        TUpdateResponse,
-        TDeleteRequest,
-        TDeleteResponse
+        TUpdateResponse
     >
     {
         Task<TNewResponse> Create(Guid userId, TNewRequest newRequest);
-        Task<TGetResponse> Get(Guid userId, string id);
-
-        //Task<TUpdateResponse> UpdateEntry(Guid userId, TUpdateRequest updateRequest);
-        //Task<TDeleteResponse> DeleteEntry(Guid userId, TDeleteRequest deleteRequest);
+        Task<TGetResponse> Get(Guid userId, string entityId);
+        Task<TUpdateResponse> Update(Guid userId, TUpdateRequest updateRequest);
     }
 }

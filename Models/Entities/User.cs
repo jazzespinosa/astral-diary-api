@@ -16,6 +16,9 @@ namespace AstralDiaryApi.Models.Entities
         [Column("name")]
         public required string Name { get; set; }
 
+        [Column("avatar")]
+        public string? Avatar { get; set; }
+
         [Column("firebase_uid")]
         public required string FirebaseUid { get; set; }
 

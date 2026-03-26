@@ -10,17 +10,6 @@
         public int PageSize { get; set; } = 20;
     }
 
-    public class GetSearchEntryResponse
-    {
-        public required string EntryId { get; set; }
-        public DateOnly Date { get; set; }
-        public required string Title { get; set; }
-        public required string Content { get; set; }
-        public ICollection<string>? AttachmentsThumbnails { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime ModifiedAt { get; set; }
-    }
-
     public class PagedResult<T>
     {
         public List<T> Items { get; set; } = new();

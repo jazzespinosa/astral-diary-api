@@ -8,14 +8,19 @@ namespace AstralDiaryApi.Services.Implementations
 {
     public class AttachmentTokenService : IAttachmentTokenService
     {
-        private readonly MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+        private readonly IMemoryCache _cache;
+
+        public AttachmentTokenService(IMemoryCache cache)
+        {
+            _cache = cache;
+        }
 
         public string CreateToken(Guid userId, string id)
         {
             var token = Guid.NewGuid().ToString("N");
             var data = new AttachmentTokenObject { UserId = userId, Id = id };
 
-            _cache.Set(token, id, TimeSpan.FromSeconds(60));
+            _cache.Set(token, data, TimeSpan.FromSeconds(60));
             return token;
         }
 
@@ -23,7 +28,7 @@ namespace AstralDiaryApi.Services.Implementations
         {
             if (_cache.TryGetValue(token, out AttachmentTokenObject data))
             {
-                _cache.Remove(token);
+                //_cache.Remove(token);
                 return data;
             }
             return null;

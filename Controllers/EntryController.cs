@@ -1,5 +1,9 @@
-﻿using AstralDiaryApi.Models.DTOs.Entries.Get;
+﻿using System.Net;
+using AstralDiaryApi.Common.Helpers;
+using AstralDiaryApi.Common.Interfaces;
+using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
+using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,12 +27,26 @@ namespace AstralDiaryApi.Controllers
 
         [HttpPost("create")]
         [Authorize]
-        public async Task<IActionResult> CreateEntry([FromForm] NewEntryRequest newEntryRequest)
+        public async Task<IActionResult> CreateEntry(
+            [FromForm] NewEntryRequestRaw newEntryRequestRaw
+        )
         {
             var userId = await GetUserId();
-            var response = await _entryService.Create(userId, newEntryRequest);
+            var processedRequestDto = new NewEntryRequestProcessed
+            {
+                Date = newEntryRequestRaw.Date,
+                Title = newEntryRequestRaw.Title,
+                Content = newEntryRequestRaw.Content,
+                Mood = newEntryRequestRaw.Mood,
+                Attachments = await AttachmentHelper.ProcessAttachmentsAsync(
+                    newEntryRequestRaw.Attachments
+                ),
+            };
 
-            return Ok(response);
+            var response = await _entryService.Create(userId, processedRequestDto);
+            var uri = Url.Action("GetEntry", "Entry", new { entryId = response.Id });
+
+            return Created(uri, response);
         }
 
         [HttpGet("get-calendar-entries")]
@@ -64,7 +82,7 @@ namespace AstralDiaryApi.Controllers
             return Ok(response);
         }
 
-        [HttpGet("get-entry/{entryId}")]
+        [HttpGet("get/{entryId}")]
         [Authorize]
         public async Task<IActionResult> GetEntry(string entryId)
         {
@@ -72,6 +90,47 @@ namespace AstralDiaryApi.Controllers
             var response = await _entryService.Get(userId, entryId);
 
             return Ok(response);
+        }
+
+        [HttpPut("update/{entryId}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateEntry(
+            string entryId,
+            [FromForm] UpdateEntryRequestRaw updateEntryRequestRaw
+        )
+        {
+            if (entryId != updateEntryRequestRaw.Id)
+                return BadRequest("Entry Id does not match.");
+
+            var userId = await GetUserId();
+            var processedRequestDto = new UpdateEntryRequestProcessed
+            {
+                Id = updateEntryRequestRaw.Id,
+                Date = updateEntryRequestRaw.Date,
+                Title = updateEntryRequestRaw.Title,
+                Content = updateEntryRequestRaw.Content,
+                Mood = updateEntryRequestRaw.Mood,
+                Attachments = await AttachmentHelper.ProcessAttachmentsAsync(
+                    updateEntryRequestRaw.Attachments
+                ),
+            };
+
+            var response = await _entryService.Update(userId, processedRequestDto);
+
+            return Ok(response);
+        }
+
+        [HttpDelete("delete/{entryId}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteEntry(string entryId)
+        {
+            var userId = await GetUserId();
+            var response = await _entryService.SoftDeleteEntry(userId, entryId);
+
+            if (response)
+                return StatusCode(StatusCodes.Status204NoContent);
+
+            return StatusCode(StatusCodes.Status500InternalServerError);
         }
 
         private async Task<Guid> GetUserId()

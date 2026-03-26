@@ -27,7 +27,18 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("Connection string is not set.");
 }
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+    options.UseMySql(
+        connectionString,
+        ServerVersion.AutoDetect(connectionString),
+        sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null
+            );
+        }
+    )
 );
 
 // Services
@@ -35,7 +46,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEntryService, EntryService>();
 builder.Services.AddScoped<IDraftService, DraftService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
-builder.Services.AddScoped<IAttachmentTokenService, AttachmentTokenService>();
+builder.Services.AddSingleton<IAttachmentTokenService, AttachmentTokenService>();
+
+builder.Services.AddMemoryCache();
 
 // Environment
 builder.Services.AddSingleton<MyEnvironment>();
@@ -56,7 +69,12 @@ builder.Services.AddCors(options =>
         "AllowDevelopmentOrigins",
         policy =>
         {
-            policy.WithOrigins(["http://localhost:4200"]).AllowAnyHeader().AllowAnyMethod();
+            policy
+                .WithOrigins(["http://localhost:4200"])
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .WithExposedHeaders("Location");
+            ;
         }
     );
 });
@@ -90,6 +108,8 @@ builder.Services.Configure<RouteOptions>(options =>
 
 // Build
 var app = builder.Build();
+
+app.UseStaticFiles();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

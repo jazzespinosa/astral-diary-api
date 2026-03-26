@@ -16,6 +16,7 @@ namespace AstralDiaryApi.Data.Configurations
                 .HasPrincipalKey(u => u.UserId)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(d => d.EntityId).HasMaxLength(25).IsRequired();
             builder.HasIndex(d => d.EntityId);
             builder.HasIndex(d => d.UserId);
             builder.HasIndex(d => d.ModifiedAt);

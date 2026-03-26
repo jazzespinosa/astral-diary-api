@@ -12,4 +12,9 @@ namespace AstralDiaryApi.Models.DTOs.Entries.Get
             set => Id = value;
         }
     }
+
+    public class GetDraftCountResponse
+    {
+        public int Count { get; set; }
+    }
 }

@@ -1,4 +1,5 @@
-﻿using AstralDiaryApi.Services.Implementations;
+﻿using AstralDiaryApi.Models.DTOs.Attachments;
+using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +26,7 @@ namespace AstralDiaryApi.Controllers
             _userService = userService;
         }
 
-        [HttpGet("token/{entryId}")]
+        [HttpGet("token/{id}")]
         [Authorize]
         public async Task<IActionResult> GetImageToken(string id)
         {
@@ -34,33 +35,50 @@ namespace AstralDiaryApi.Controllers
             return Ok(new { token });
         }
 
-        //[HttpGet("get/{fileName}")]
-        //[Authorize]
-        //public async Task<IActionResult> GetAttachment(string internalFileName)
-        //{
-        //    var userId = await GetUserId();
-        //}
-
-        [HttpGet("get-entry-thumbnail/{entryId}/{internalFileName}")]
-        public async Task<IActionResult> GetEntryThumbnail(
-            string entryId,
+        [HttpGet("get-thumbnail/{entityId}/{internalFileName}")]
+        public async Task<IActionResult> GetThumbnail(
+            string entityId,
             string internalFileName,
-            [FromQuery] string token
+            [FromQuery] string t
         )
         {
-            var tokenData = _attachmentTokenService.ValidateToken(token);
+            var tokenData = _attachmentTokenService.ValidateToken(t);
 
-            if (tokenData == null || tokenData.Id != entryId)
+            if (tokenData == null || tokenData.Id != entityId)
             {
                 return Unauthorized();
             }
 
-            var fileDownloadResult = await _fileStorageService.GetEntryThumbnail(
+            var fileDownloadResult = await _fileStorageService.GetThumbnail(
                 tokenData.UserId,
-                entryId,
+                entityId,
                 internalFileName
             );
 
+            var contentType = GetContentType(fileDownloadResult);
+
+            return File(fileDownloadResult.FileBytes, contentType, fileDownloadResult.FileName);
+        }
+
+        [HttpGet("get-attachment/{entityId}/{internalFileName}")]
+        [Authorize]
+        public async Task<IActionResult> GetAttachment(string entityId, string internalFileName)
+        {
+            var userId = await GetUserId();
+
+            var fileDownloadResult = await _fileStorageService.GetAttachment(
+                userId,
+                entityId,
+                internalFileName
+            );
+
+            var contentType = GetContentType(fileDownloadResult);
+
+            return File(fileDownloadResult.FileBytes, contentType, fileDownloadResult.FileName);
+        }
+
+        private string GetContentType(FileDownloadResult fileDownloadResult)
+        {
             var provider = new FileExtensionContentTypeProvider();
 
             if (!provider.TryGetContentType(fileDownloadResult.FileName, out var contentType))
@@ -68,7 +86,7 @@ namespace AstralDiaryApi.Controllers
                 contentType = "application/octet-stream";
             }
 
-            return File(fileDownloadResult.FileBytes, contentType, fileDownloadResult.FileName);
+            return contentType;
         }
 
         private async Task<Guid> GetUserId()

@@ -10,5 +10,6 @@
         DateOnly Date { get; set; }
         string? Title { get; set; }
         string? Content { get; set; }
+        int Mood { get; set; }
     }
 }

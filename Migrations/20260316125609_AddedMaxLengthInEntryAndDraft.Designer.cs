@@ -4,6 +4,7 @@ using AstralDiaryApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AstralDiaryApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260316125609_AddedMaxLengthInEntryAndDraft")]
+    partial class AddedMaxLengthInEntryAndDraft
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -41,11 +44,11 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<string>("DraftId")
-                        .HasColumnType("varchar(25)")
+                        .HasColumnType("longtext")
                         .HasColumnName("draft_id");
 
                     b.Property<string>("EntryId")
-                        .HasColumnType("varchar(25)")
+                        .HasColumnType("longtext")
                         .HasColumnName("entry_id");
 
                     b.Property<string>("FilePath")
@@ -69,10 +72,6 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnName("thumbnail_path");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DraftId");
-
-                    b.HasIndex("EntryId");
 
                     b.HasIndex("InternalFileName");
 
@@ -112,10 +111,6 @@ namespace AstralDiaryApi.Migrations
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp")
                         .HasColumnName("modified_at");
-
-                    b.Property<int>("Mood")
-                        .HasColumnType("int")
-                        .HasColumnName("mood");
 
                     b.Property<string>("Title")
                         .HasColumnType("longtext")
@@ -168,17 +163,9 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("varchar(25)")
                         .HasColumnName("entry_id");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("is_deleted");
-
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp")
                         .HasColumnName("modified_at");
-
-                    b.Property<int>("Mood")
-                        .HasColumnType("int")
-                        .HasColumnName("mood");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp")
@@ -200,17 +187,12 @@ namespace AstralDiaryApi.Migrations
 
                     b.HasIndex("EntityId");
 
-                    b.HasIndex("Mood");
-
                     b.HasIndex("UserId");
 
                     b.HasIndex("Title", "Content")
                         .HasAnnotation("MySql:FullTextIndex", true);
 
-                    b.ToTable("Entries", t =>
-                        {
-                            t.HasCheckConstraint("CK_Entry_DeletedAt_OnlyIf_IsDeleted", "(is_deleted = 1 AND deleted_at IS NOT NULL) OR (is_deleted = 0 AND deleted_at IS NULL)");
-                        });
+                    b.ToTable("Entries");
                 });
 
             modelBuilder.Entity("AstralDiaryApi.Models.Entities.User", b =>
@@ -221,10 +203,6 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Avatar")
-                        .HasColumnType("longtext")
-                        .HasColumnName("avatar");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -255,18 +233,6 @@ namespace AstralDiaryApi.Migrations
 
             modelBuilder.Entity("AstralDiaryApi.Models.Entities.Attachment", b =>
                 {
-                    b.HasOne("AstralDiaryApi.Models.Entities.Draft", "Draft")
-                        .WithMany("Attachments")
-                        .HasForeignKey("DraftId")
-                        .HasPrincipalKey("EntityId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("AstralDiaryApi.Models.Entities.Entry", "Entry")
-                        .WithMany("Attachments")
-                        .HasForeignKey("EntryId")
-                        .HasPrincipalKey("EntityId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.Navigation("Draft");
 
                     b.Navigation("Entry");

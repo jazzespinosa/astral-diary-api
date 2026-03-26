@@ -3,6 +3,7 @@ using AstralDiaryApi.Models.DTOs;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
+using AstralDiaryApi.Models.DTOs.Users;
 using AstralDiaryApi.Models.Entities;
 
 namespace AstralDiaryApi.Services.Interfaces
@@ -10,20 +11,26 @@ namespace AstralDiaryApi.Services.Interfaces
     public interface IEntryService
         : IBaseEntryService<
             Entry,
-            NewEntryRequest,
+            NewEntryRequestProcessed,
             NewEntryResponse,
             GetEntryResponse,
-            UpdateEntryRequest,
-            UpdateEntryResponse,
-            DeleteEntryRequest,
-            DeleteEntryResponse
+            UpdateEntryRequestProcessed,
+            UpdateEntryResponse
         >
     {
         Task<List<GetEntryResponse>> GetCalendarEntries(Guid userId, DateOnly date);
         Task<List<GetEntryResponse>> GetRecentEntries(Guid userId, int limit);
-        Task<PagedResult<GetSearchEntryResponse>> SearchAsync(
-            Guid userId,
-            GetSearchEntryRequest request
+        Task<PagedResult<GetEntryResponse>> SearchAsync(Guid userId, GetSearchEntryRequest request);
+        Task<bool> SoftDeleteEntry(Guid userId, string entryId);
+        Task AddDraftPublishToEntryAsync(
+            Entry entry,
+            UpdateDraftRequestProcessed updateDraftRequest
         );
+        Task<GetUserInfoResponse> GetUserStatsAsync(
+            Guid userId,
+            UserInitialDetailsDto userInitialDetailsDto,
+            DateOnly currentDate
+        );
+        Task<List<UserMoodMap>> GetUserMoodMapAsync(Guid userId);
     }
 }
