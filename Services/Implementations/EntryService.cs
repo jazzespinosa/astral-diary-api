@@ -224,7 +224,7 @@ namespace AstralDiaryApi.Services.Implementations
         )
         {
             if (string.IsNullOrWhiteSpace(getSearchEntriesRequest.SearchTerm))
-                return await GetAllPagedAsync(userId, getSearchEntriesRequest);
+                return await GetBlankSearchPagedAsync(userId, getSearchEntriesRequest);
 
             var term = getSearchEntriesRequest.SearchTerm.Trim();
             var booleanTerm = string.Join(
@@ -232,7 +232,7 @@ namespace AstralDiaryApi.Services.Implementations
                 term.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => $"+{w}*")
             );
 
-            var totalCount = await CountFullTextAsync(userId, booleanTerm);
+            //var totalCount = await CountFullTextAsync(userId, booleanTerm);
 
             var offset = (getSearchEntriesRequest.Page - 1) * getSearchEntriesRequest.PageSize;
 
@@ -268,6 +268,13 @@ namespace AstralDiaryApi.Services.Implementations
                     _ => query,
                 };
             }
+
+            if (getSearchEntriesRequest.Mood >= 1 && getSearchEntriesRequest.Mood <= 5)
+            {
+                query = query.Where(e => e.Mood == getSearchEntriesRequest.Mood);
+            }
+
+            var totalCount = await query.CountAsync();
 
             query =
                 getSearchEntriesRequest.Sort?.ToLower() == "asc"
@@ -308,47 +315,69 @@ namespace AstralDiaryApi.Services.Implementations
             };
         }
 
-        private async Task<int> CountFullTextAsync(Guid userId, string booleanTerm)
-        {
-            await _dbContext.Database.OpenConnectionAsync();
-            try
-            {
-                using var cmd = _dbContext.Database.GetDbConnection().CreateCommand();
-                cmd.CommandText =
-                    @"
-            SELECT COUNT(*) FROM entries
-            WHERE user_id = @userId
-              AND MATCH(title, content) AGAINST(@term IN BOOLEAN MODE)";
-                var userParam = cmd.CreateParameter();
-                userParam.ParameterName = "@userId";
-                userParam.Value = userId;
-                cmd.Parameters.Add(userParam);
-                var termParam = cmd.CreateParameter();
-                termParam.ParameterName = "@term";
-                termParam.Value = booleanTerm;
-                cmd.Parameters.Add(termParam);
-                var result = await cmd.ExecuteScalarAsync();
-                return Convert.ToInt32(result);
-            }
-            finally
-            {
-                await _dbContext.Database.CloseConnectionAsync();
-            }
-        }
+        //private async Task<int> CountFullTextAsync(Guid userId, string booleanTerm)
+        //{
+        //    await _dbContext.Database.OpenConnectionAsync();
+        //    try
+        //    {
+        //        using var cmd = _dbContext.Database.GetDbConnection().CreateCommand();
+        //        cmd.CommandText =
+        //            @"
+        //    SELECT COUNT(*) FROM entries
+        //    WHERE user_id = @userId
+        //      AND MATCH(title, content) AGAINST(@term IN BOOLEAN MODE)";
+        //        var userParam = cmd.CreateParameter();
+        //        userParam.ParameterName = "@userId";
+        //        userParam.Value = userId;
+        //        cmd.Parameters.Add(userParam);
+        //        var termParam = cmd.CreateParameter();
+        //        termParam.ParameterName = "@term";
+        //        termParam.Value = booleanTerm;
+        //        cmd.Parameters.Add(termParam);
+        //        var result = await cmd.ExecuteScalarAsync();
+        //        return Convert.ToInt32(result);
+        //    }
+        //    finally
+        //    {
+        //        await _dbContext.Database.CloseConnectionAsync();
+        //    }
+        //}
 
-        private async Task<PagedResult<GetEntryResponse>> GetAllPagedAsync(
+        private async Task<PagedResult<GetEntryResponse>> GetBlankSearchPagedAsync(
             Guid userId,
             GetSearchEntryRequest getSearchEntriesRequest
         )
         {
             var query = _dbContext.Entries.AsNoTracking().Where(e => e.UserId == userId);
 
+            if (
+                getSearchEntriesRequest.DateFilter != null
+                && getSearchEntriesRequest.DateFilter?.ToLower() != "any"
+                && getSearchEntriesRequest.Date != null
+            )
+            {
+                var dateValue = getSearchEntriesRequest.Date;
+
+                query = getSearchEntriesRequest.DateFilter?.ToLower() switch
+                {
+                    "exact" => query.Where(e => e.Date == dateValue),
+                    "before" => query.Where(e => e.Date < dateValue),
+                    "after" => query.Where(e => e.Date > dateValue),
+                    _ => query,
+                };
+            }
+
+            if (getSearchEntriesRequest.Mood >= 1 && getSearchEntriesRequest.Mood <= 5)
+            {
+                query = query.Where(e => e.Mood == getSearchEntriesRequest.Mood);
+            }
+
             var totalCount = await query.CountAsync();
 
             query =
                 getSearchEntriesRequest.Sort?.ToLower() == "asc"
-                    ? query.OrderBy(e => e.Date)
-                    : query.OrderByDescending(e => e.Date);
+                    ? query.OrderBy(e => e.Date).ThenBy(e => e.ModifiedAt)
+                    : query.OrderByDescending(e => e.Date).ThenByDescending(e => e.ModifiedAt);
 
             var items = await query
                 .Skip((getSearchEntriesRequest.Page - 1) * getSearchEntriesRequest.PageSize)

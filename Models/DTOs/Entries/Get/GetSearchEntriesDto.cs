@@ -5,6 +5,7 @@
         public string? SearchTerm { get; set; }
         public string DateFilter { get; set; } = "any";
         public DateOnly? Date { get; set; }
+        public int Mood { get; set; }
         public string Sort { get; set; } = "desc";
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
