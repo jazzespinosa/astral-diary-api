@@ -6,21 +6,19 @@ namespace AstralDiaryApi.Services.Interfaces
 {
     public interface IFileStorageService
     {
-        Task<AttachmentObjResponse> SaveAttachment(IFormFile file, string sourceId);
-        Task<FileDownloadResult> GetThumbnail(
+        Task<AttachmentObject> SaveAttachment(
+            IFormFile attachmentFile,
+            IFormFile thumbnailFile,
+            string entityId,
+            Guid userId
+        );
+        Task<FileDownloadResult> GetAttachmentFile<TEntity>(
             Guid userId,
             string entityId,
-            string internalFileName
-        );
-        Task<FileDownloadResult> GetAttachment(
-            Guid userId,
-            string entityId,
-            string internalFileName
-        );
-        Task<DeleteAttachmentsResult> DeleteAttachmentAndThumbnail(
-            List<AttachmentComparisonDto> attachmentsToDelete,
-            string entityId
-        );
-        Task<DeleteAllAttachmentsResult> DeleteAllAttachment(string entityId);
+            string attachmentType,
+            string attachmentId
+        )
+            where TEntity : class, IEntityIdSource;
+        Task DeleteSavedAttachment(string entityId, Guid userId);
     }
 }

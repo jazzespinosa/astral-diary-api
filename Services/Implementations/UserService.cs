@@ -37,14 +37,13 @@ namespace AstralDiaryApi.Services.Implementations
                 user = await CreateUserInDB(firebaseUid, loginRequest);
             }
 
-            var loginResponse = new LoginResponse
+            return new LoginResponse
             {
                 UserId = user.UserId,
                 Email = user.Email,
                 Name = user.Name,
+                Avatar = user.Avatar,
             };
-
-            return loginResponse;
         }
 
         private async Task<User> CreateUserInDB(string firebaseUid, LoginRequest loginRequest)
@@ -67,13 +66,7 @@ namespace AstralDiaryApi.Services.Implementations
         {
             var userInitialDetails = await GetUserInitialDetailsAsync(userId);
 
-            var response = await _entryService.GetUserStatsAsync(
-                userId,
-                userInitialDetails,
-                currentDate
-            );
-
-            return response;
+            return await _entryService.GetUserStatsAsync(userId, userInitialDetails, currentDate);
         }
 
         private async Task<UserInitialDetailsDto> GetUserInitialDetailsAsync(Guid userId)
@@ -83,14 +76,12 @@ namespace AstralDiaryApi.Services.Implementations
             if (user == null)
                 throw new UnauthorizedAccessException("User not found.");
 
-            var userInitialDetails = new UserInitialDetailsDto
+            return new UserInitialDetailsDto
             {
                 Email = user.Email,
                 DisplayName = user.Name,
                 Avatar = user.Avatar,
             };
-
-            return userInitialDetails;
         }
 
         public async Task<Guid> GetUserId(string firebaseUid)
@@ -104,12 +95,20 @@ namespace AstralDiaryApi.Services.Implementations
             return user.UserId;
         }
 
+        public async Task<string?> GetUserAvatar(Guid userId)
+        {
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+
+            user = user ?? throw new UnauthorizedAccessException("User not found.");
+
+            return user.Avatar;
+        }
+
         public async Task<string?> UpdateUserAvatar(Guid userId, string? avatar)
         {
             var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.UserId == userId);
 
-            if (user == null)
-                throw new UnauthorizedAccessException("User not found.");
+            user = user ?? throw new UnauthorizedAccessException("User not found.");
 
             user.Avatar = avatar;
             await _dbContext.SaveChangesAsync();

@@ -4,12 +4,12 @@ using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Data;
 using AstralDiaryApi.Exceptions;
 using AstralDiaryApi.Models.DTOs;
+using AstralDiaryApi.Models.DTOs.Entries.Delete;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Models.Entities;
 using AstralDiaryApi.Services.Interfaces;
-using ImageMagick;
 using Microsoft.EntityFrameworkCore;
 
 namespace AstralDiaryApi.Services.Implementations
@@ -17,10 +17,10 @@ namespace AstralDiaryApi.Services.Implementations
     public class DraftService
         : BaseEntryService<
             Draft,
-            NewDraftRequestProcessed,
+            NewDraftRequest,
             NewDraftResponse,
             GetDraftResponse,
-            UpdateDraftRequestProcessed,
+            UpdateDraftRequest,
             UpdateDraftResponse
         >,
             IDraftService
@@ -39,14 +39,14 @@ namespace AstralDiaryApi.Services.Implementations
 
         public override async Task<NewDraftResponse> Create(
             Guid userId,
-            NewDraftRequestProcessed newDraftRequest
+            NewDraftRequest newDraftRequest
         )
         {
             var count = await _dbContext.Drafts.CountAsync(d => d.UserId == userId);
 
             if (count >= 10)
             {
-                throw new InvalidOperationException("Maximum number of drafts (10) reached");
+                throw new MaxItemsExceededException("Maximum number of drafts (10) reached");
             }
 
             var draft = new Draft
@@ -55,51 +55,45 @@ namespace AstralDiaryApi.Services.Implementations
                 CreatedAt = DateTime.UtcNow,
                 ModifiedAt = DateTime.UtcNow,
                 Date = newDraftRequest.Date,
-                Title = newDraftRequest.Title,
-                Content = newDraftRequest.Content,
                 Mood = newDraftRequest.Mood,
-                Attachments = new List<Attachment>(),
+                EncryptedContent = newDraftRequest.EncryptedContent,
+                ContentIv = newDraftRequest.ContentIv,
+                ContentSalt = newDraftRequest.ContentSalt,
             };
 
             await _dbContext.Drafts.AddAsync(draft);
-            await AddAttachmentsAsync(draft, newDraftRequest);
+            await AddAttachmentsAsync(draft, newDraftRequest, userId);
             await _dbContext.SaveChangesAsync();
 
-            var newDraftResponse = new NewDraftResponse
-            {
-                Id = draft.EntityId,
-                Date = draft.Date,
-                Title = draft.Title,
-            };
-
-            return newDraftResponse;
+            return new NewDraftResponse { Id = draft.EntityId };
         }
 
         public override async Task<GetDraftResponse> Get(Guid userId, string draftId)
         {
-            var draft = await FindByIdAsync(userId, draftId);
+            var draft = await FindByIdAsync(userId, draftId, DocuType.Draft);
 
             if (draft == null)
-                throw new ArgumentException("Draft not found");
+                throw new NotFoundException("Draft not found");
 
-            var response = new GetDraftResponse
+            return new GetDraftResponse
             {
                 Id = draft.Id,
+                DocuType = draft.DocuType,
                 Date = draft.Date,
-                Title = draft.Title,
-                Content = draft.Content,
                 Mood = draft.Mood,
-                Attachments = draft.Attachments,
+                EncryptedContent = draft.EncryptedContent,
+                ContentIv = draft.ContentIv,
+                ContentSalt = draft.ContentSalt,
+                AttachmentId = draft.AttachmentId,
+                AttachmentHash = draft.AttachmentHash,
                 CreatedAt = draft.CreatedAt,
                 ModifiedAt = draft.ModifiedAt,
             };
-
-            return response;
         }
 
         public override async Task<UpdateDraftResponse> Update(
             Guid userId,
-            UpdateDraftRequestProcessed updateDraftRequest
+            UpdateDraftRequest updateDraftRequest
         )
         {
             var draftId = updateDraftRequest.Id;
@@ -109,52 +103,48 @@ namespace AstralDiaryApi.Services.Implementations
                 throw new NotFoundException("Entry not found");
 
             await UpdateContentsAsync(userId, draft, updateDraftRequest);
-            await CompareAndUpdateAttachmentsAsync(userId, draftId, draft, updateDraftRequest);
+            await UpdateAttachmentsAsync(userId, draftId, draft, updateDraftRequest);
             await _dbContext.SaveChangesAsync();
 
-            var response = new UpdateDraftResponse
-            {
-                Id = draftId,
-                Date = updateDraftRequest.Date,
-                Title = updateDraftRequest.Title,
-            };
-
-            return response;
+            return new UpdateDraftResponse { Id = draftId };
         }
 
         public async Task<UpdateEntryResponse> PublishDraft(
             Guid userId,
-            UpdateDraftRequestProcessed updateDraftRequest
+            UpdateDraftRequest updateDraftRequest
         )
         {
+            var entryDate = updateDraftRequest.Date;
+            if (entryDate > DateOnly.FromDateTime(DateTime.UtcNow))
+            {
+                throw new ArgumentException("Entry date cannot be in the future.");
+            }
+
             var draftId = updateDraftRequest.Id;
+            var draft = await _dbContext.Drafts.FirstOrDefaultAsync(d =>
+                d.UserId == userId && d.EntityId == updateDraftRequest.Id
+            );
 
             var newEntry = new Entry
             {
                 UserId = userId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = draft?.CreatedAt ?? DateTime.UtcNow,
                 ModifiedAt = DateTime.UtcNow,
                 Date = updateDraftRequest.Date,
-                Title = updateDraftRequest.Title!,
-                Content = updateDraftRequest.Content!,
                 Mood = updateDraftRequest.Mood,
-                Attachments = new List<Attachment>(),
+                EncryptedContent = updateDraftRequest.EncryptedContent,
+                ContentIv = updateDraftRequest.ContentIv,
+                ContentSalt = updateDraftRequest.ContentSalt,
                 PublishedAt = DateTime.UtcNow,
             };
 
-            await _entryService.AddDraftPublishToEntryAsync(newEntry, updateDraftRequest); // change function name
+            await _entryService.PublishDraftToEntryAsync(newEntry, userId, updateDraftRequest);
             await DeleteDraft(userId, draftId);
             await _dbContext.SaveChangesAsync();
-            await _fileStorageService.DeleteAllAttachment(draftId);
 
-            var response = new UpdateEntryResponse
-            {
-                Id = newEntry.EntityId,
-                Date = newEntry.Date,
-                Title = newEntry.Title,
-            };
+            await _fileStorageService.DeleteSavedAttachment(draftId, userId);
 
-            return response;
+            return new UpdateEntryResponse { Id = newEntry.EntityId };
         }
 
         public async Task<GetDraftCountResponse> CountDraftsAsync(Guid userId)
@@ -165,52 +155,39 @@ namespace AstralDiaryApi.Services.Implementations
 
         public async Task<bool> DeleteDraft(Guid userId, string draftId)
         {
-            var entry = await FindEntityByIdAsync(userId, draftId);
+            var draft = await FindEntityByIdAsync(userId, draftId);
 
-            if (entry == null)
+            if (draft == null)
                 throw new NotFoundException("Draft not found");
 
-            _dbContext.Drafts.Remove(entry);
+            _dbContext.Drafts.Remove(draft);
             await _dbContext.SaveChangesAsync();
-            await _fileStorageService.DeleteAllAttachment(draftId);
+
+            await _fileStorageService.DeleteSavedAttachment(draftId, userId);
 
             return true;
         }
 
         public async Task<List<GetDraftResponse>> GetAllDrafts(Guid userId)
         {
-            var response = new List<GetDraftResponse>();
-            var drafts = await _dbContext
+            return await _dbContext
                 .Drafts.Where(d => d.UserId == userId)
                 .OrderByDescending(d => d.ModifiedAt)
                 .Select(d => new GetDraftResponse
                 {
                     Id = d.EntityId,
+                    DocuType = DocuType.Draft,
                     Date = d.Date,
-                    Title = d.Title,
-                    Content = d.Content,
                     Mood = d.Mood,
-                    Attachments = d
-                        .Attachments.Where(a => a.InternalFileName != null)
-                        .Select(a => new AttachmentObjResponse
-                        {
-                            FilePath = a.FilePath,
-                            ThumbnailPath = a.ThumbnailPath,
-                            InternalFileName = a.InternalFileName,
-                            OriginalFileName = a.OriginalFileName,
-                        })
-                        .ToList(),
+                    EncryptedContent = d.EncryptedContent,
+                    ContentIv = d.ContentIv,
+                    ContentSalt = d.ContentSalt,
+                    AttachmentId = d.AttachmentId,
+                    AttachmentHash = d.AttachmentHash,
                     CreatedAt = d.CreatedAt,
                     ModifiedAt = d.ModifiedAt,
                 })
                 .ToListAsync();
-
-            foreach (var draft in drafts)
-            {
-                response.Add(draft);
-            }
-
-            return response;
         }
     }
 }

@@ -4,6 +4,7 @@ using AstralDiaryApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AstralDiaryApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260401164330_AddedAttachmentHash")]
+    partial class AddedAttachmentHash
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -31,6 +34,10 @@ namespace AstralDiaryApi.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AttachmentFilePath")
+                        .HasColumnType("longtext")
+                        .HasColumnName("att_file_path");
+
                     b.Property<string>("AttachmentHash")
                         .HasColumnType("longtext")
                         .HasColumnName("attachment_hash");
@@ -39,19 +46,13 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("longtext")
                         .HasColumnName("attachment_id");
 
-                    b.Property<string>("AttachmentPath")
+                    b.Property<string>("AttachmentThumbnailPath")
                         .HasColumnType("longtext")
-                        .HasColumnName("att_file_path");
+                        .HasColumnName("att_thumbnail_path");
 
-                    b.Property<string>("ContentIv")
-                        .IsRequired()
+                    b.Property<string>("Content")
                         .HasColumnType("longtext")
-                        .HasColumnName("content_iv");
-
-                    b.Property<string>("ContentSalt")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("content_salt");
+                        .HasColumnName("content");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp")
@@ -61,16 +62,21 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("date")
                         .HasColumnName("date");
 
-                    b.Property<string>("EncryptedContent")
+                    b.Property<string>("EncryptedData")
                         .IsRequired()
                         .HasColumnType("longtext")
-                        .HasColumnName("encrypted_content");
+                        .HasColumnName("encrypted_data");
 
                     b.Property<string>("EntityId")
                         .IsRequired()
                         .HasMaxLength(25)
                         .HasColumnType("varchar(25)")
                         .HasColumnName("draft_id");
+
+                    b.Property<string>("Iv")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("iv");
 
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp")
@@ -80,9 +86,14 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("int")
                         .HasColumnName("mood");
 
-                    b.Property<string>("ThumbnailPath")
+                    b.Property<string>("Salt")
+                        .IsRequired()
                         .HasColumnType("longtext")
-                        .HasColumnName("att_thumbnail_path");
+                        .HasColumnName("salt");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("longtext")
+                        .HasColumnName("title");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("char(36)")
@@ -108,6 +119,10 @@ namespace AstralDiaryApi.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AttachmentFilePath")
+                        .HasColumnType("longtext")
+                        .HasColumnName("att_file_path");
+
                     b.Property<string>("AttachmentHash")
                         .HasColumnType("longtext")
                         .HasColumnName("attachment_hash");
@@ -116,19 +131,14 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("longtext")
                         .HasColumnName("attachment_id");
 
-                    b.Property<string>("AttachmentPath")
+                    b.Property<string>("AttachmentThumbnailPath")
                         .HasColumnType("longtext")
-                        .HasColumnName("att_file_path");
+                        .HasColumnName("att_thumbnail_path");
 
-                    b.Property<string>("ContentIv")
+                    b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("content_iv");
-
-                    b.Property<string>("ContentSalt")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("content_salt");
+                        .HasColumnType("TEXT")
+                        .HasColumnName("content");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp")
@@ -142,10 +152,10 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("timestamp")
                         .HasColumnName("deleted_at");
 
-                    b.Property<string>("EncryptedContent")
+                    b.Property<string>("EncryptedData")
                         .IsRequired()
                         .HasColumnType("longtext")
-                        .HasColumnName("encrypted_content");
+                        .HasColumnName("encrypted_data");
 
                     b.Property<string>("EntityId")
                         .IsRequired()
@@ -156,6 +166,11 @@ namespace AstralDiaryApi.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("is_deleted");
+
+                    b.Property<string>("Iv")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("iv");
 
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp")
@@ -169,9 +184,16 @@ namespace AstralDiaryApi.Migrations
                         .HasColumnType("timestamp")
                         .HasColumnName("published_at");
 
-                    b.Property<string>("ThumbnailPath")
+                    b.Property<string>("Salt")
+                        .IsRequired()
                         .HasColumnType("longtext")
-                        .HasColumnName("att_thumbnail_path");
+                        .HasColumnName("salt");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("title");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("char(36)")
@@ -186,6 +208,9 @@ namespace AstralDiaryApi.Migrations
                     b.HasIndex("Mood");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("Title", "Content")
+                        .HasAnnotation("MySql:FullTextIndex", true);
 
                     b.ToTable("Entries", t =>
                         {

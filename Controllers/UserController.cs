@@ -44,12 +44,21 @@ namespace AstralDiaryApi.Controllers
 
         [HttpGet("get-mood-map")]
         [Authorize]
-        public async Task<IActionResult> GetUserMoodMap()
+        public async Task<IActionResult> GetUserMoodMap([FromQuery] int year)
         {
             var userId = await GetUserId();
 
-            var response = await _entryService.GetUserMoodMapAsync(userId);
+            var response = await _entryService.GetUserMoodMapAsync(userId, year);
             return Ok(response);
+        }
+
+        [HttpGet("get-avatar")]
+        [Authorize]
+        public async Task<IActionResult> GetUserAvatar()
+        {
+            var userId = await GetUserId();
+            var response = await _userService.GetUserAvatar(userId);
+            return Ok(new { avatar = response });
         }
 
         [HttpPatch("save-avatar")]

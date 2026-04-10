@@ -11,10 +11,10 @@ namespace AstralDiaryApi.Services.Interfaces
     public interface IEntryService
         : IBaseEntryService<
             Entry,
-            NewEntryRequestProcessed,
+            NewEntryRequest,
             NewEntryResponse,
             GetEntryResponse,
-            UpdateEntryRequestProcessed,
+            UpdateEntryRequest,
             UpdateEntryResponse
         >
     {
@@ -22,15 +22,20 @@ namespace AstralDiaryApi.Services.Interfaces
         Task<List<GetEntryResponse>> GetRecentEntries(Guid userId, int limit);
         Task<PagedResult<GetEntryResponse>> SearchAsync(Guid userId, GetSearchEntryRequest request);
         Task<bool> SoftDeleteEntry(Guid userId, string entryId);
-        Task AddDraftPublishToEntryAsync(
+
+        Task<List<GetEntryIdResponse>> GetEntryIds(Guid userId);
+        Task PublishDraftToEntryAsync(
             Entry entry,
-            UpdateDraftRequestProcessed updateDraftRequest
+            Guid userId,
+            UpdateDraftRequest updateDraftRequest
         );
         Task<GetUserInfoResponse> GetUserStatsAsync(
             Guid userId,
             UserInitialDetailsDto userInitialDetailsDto,
             DateOnly currentDate
         );
-        Task<List<UserMoodMap>> GetUserMoodMapAsync(Guid userId);
+        Task<List<UserMoodMap>> GetUserMoodMapAsync(Guid userId, int year);
+        Task<List<GetEntryResponse>> GetDeletedEntries(Guid userId);
+        Task<bool> RestoreEntries(Guid userId, string[] entryIds);
     }
 }

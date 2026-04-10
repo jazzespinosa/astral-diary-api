@@ -32,7 +32,9 @@ namespace AstralDiaryApi.Controllers
                     "The record was modified by another user."
                 ),
                 DbUpdateException => StatusCode(500, "A database error occurred."),
+                InvalidOperationException ex => StatusCode(500, new { message = ex.Message }),
                 ArgumentException argEx => BadRequest(new { message = argEx.Message }),
+                MaxItemsExceededException ex => StatusCode(409, new { message = ex.Message }),
                 UnauthorizedAccessException ex => StatusCode(401, new { message = ex.Message }),
                 NotFoundException ex => StatusCode(404, new { message = ex.Message }),
                 _ => StatusCode(500, "Something went wrong."),

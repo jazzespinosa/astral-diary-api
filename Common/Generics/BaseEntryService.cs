@@ -1,19 +1,19 @@
-﻿using System.Net;
+﻿using System.CodeDom;
+using System.Net;
 using System.Net.Mail;
-using AstralDiaryApi.Common.Helpers;
+using System.Text.Json;
 using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Data;
+using AstralDiaryApi.Exceptions;
 using AstralDiaryApi.Models.DTOs;
 using AstralDiaryApi.Models.DTOs.Attachments;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Models.Entities;
-using AstralDiaryApi.Models.Enums;
 using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Attachment = AstralDiaryApi.Models.Entities.Attachment;
 
 namespace AstralDiaryApi.Common.Generics
 {
@@ -25,7 +25,7 @@ namespace AstralDiaryApi.Common.Generics
         TUpdateRequest,
         TUpdateResponse
     >
-        where TEntity : class, IAttachmentSource, IEntityIdSource
+        where TEntity : class, IEntityIdSource
     {
         protected readonly AppDbContext _dbContext;
         protected readonly IFileStorageService _fileStorageService;
@@ -42,32 +42,54 @@ namespace AstralDiaryApi.Common.Generics
 
         public abstract Task<TUpdateResponse> Update(Guid userId, TUpdateRequest updateRequest);
 
-        protected async Task<IGetResponse?> FindByIdAsync(Guid userId, string entityId)
+        protected async Task<IGetResponse?> FindByIdAsync(
+            Guid userId,
+            string entityId,
+            DocuType docuType
+        )
         {
-            return await _dbContext
-                .Set<TEntity>()
-                .Where(e => e.EntityId == entityId && e.UserId == userId)
-                .Select(e => new GetEntryResponse
-                {
-                    Id = e.EntityId,
-                    Date = e.Date,
-                    Title = e.Title ?? "",
-                    Content = e.Content ?? "",
-                    Mood = e.Mood,
-                    Attachments = e
-                        .Attachments.Where(a => a.InternalFileName != null)
-                        .Select(a => new AttachmentObjResponse
+            switch (docuType)
+            {
+                case DocuType.Entry:
+                    return await _dbContext
+                        .Entries.Where(e => e.EntityId == entityId && e.UserId == userId)
+                        .Select(e => new GetResponse
                         {
-                            FilePath = a.FilePath,
-                            ThumbnailPath = a.ThumbnailPath,
-                            InternalFileName = a.InternalFileName,
-                            OriginalFileName = a.OriginalFileName,
+                            Id = e.EntityId,
+                            DocuType = docuType,
+                            Date = e.Date,
+                            Mood = e.Mood,
+                            EncryptedContent = e.EncryptedContent,
+                            ContentIv = e.ContentIv,
+                            ContentSalt = e.ContentSalt,
+                            AttachmentId = e.AttachmentId,
+                            AttachmentHash = e.AttachmentHash,
+                            CreatedAt = e.CreatedAt,
+                            ModifiedAt = e.ModifiedAt,
+                            PublishedAt = e.PublishedAt,
                         })
-                        .ToList(),
-                    CreatedAt = e.CreatedAt,
-                    ModifiedAt = e.ModifiedAt,
-                })
-                .FirstOrDefaultAsync();
+                        .FirstOrDefaultAsync();
+                case DocuType.Draft:
+                    return await _dbContext
+                        .Drafts.Where(e => e.EntityId == entityId && e.UserId == userId)
+                        .Select(e => new GetResponse
+                        {
+                            Id = e.EntityId,
+                            DocuType = docuType,
+                            Date = e.Date,
+                            Mood = e.Mood,
+                            EncryptedContent = e.EncryptedContent,
+                            ContentIv = e.ContentIv,
+                            ContentSalt = e.ContentSalt,
+                            AttachmentId = e.AttachmentId,
+                            AttachmentHash = e.AttachmentHash,
+                            CreatedAt = e.CreatedAt,
+                            ModifiedAt = e.ModifiedAt,
+                        })
+                        .FirstOrDefaultAsync();
+                default:
+                    throw new ArgumentException("Invalid entry type.");
+            }
         }
 
         protected async Task<TEntity?> FindEntityByIdAsync(Guid userId, string entityId)
@@ -80,186 +102,101 @@ namespace AstralDiaryApi.Common.Generics
         protected async Task UpdateContentsAsync(
             Guid userId,
             TEntity entity,
-            IRequestDto<AttachmentObjRequest> updateEntryRequest
+            IRequestDto updateEntryRequest
         )
         {
             if (entity == null)
-                throw new Exception("Entry does not exist.");
+                throw new NotFoundException("Entry does not exist.");
 
             entity.Date = updateEntryRequest.Date;
-            entity.Title = updateEntryRequest.Title;
-            entity.Content = updateEntryRequest.Content;
             entity.Mood = updateEntryRequest.Mood;
+            entity.EncryptedContent = updateEntryRequest.EncryptedContent;
+            entity.ContentIv = updateEntryRequest.ContentIv;
+            entity.ContentSalt = updateEntryRequest.ContentSalt;
             entity.ModifiedAt = DateTime.UtcNow;
         }
 
-        protected async Task CompareAndUpdateAttachmentsAsync(
+        protected async Task UpdateAttachmentsAsync(
             Guid userId,
             string entityId,
             TEntity entity,
-            IRequestDto<AttachmentObjRequest> updateEntryRequest
+            IRequestDto updateEntryRequest
         )
         {
-            var currentAttachments = await _dbContext
-                .Set<TEntity>()
-                .Where(e => e.UserId == userId && e.EntityId == entity.EntityId)
-                .SelectMany(e => e.Attachments)
-                .Where(a => a.InternalFileName != null)
-                .Select(a => new AttachmentComparisonDto
-                {
-                    ContentHash = a.ContentHash,
-                    OriginalFileName = a.OriginalFileName,
-                    InternalFileName = a.InternalFileName,
-                })
-                .ToListAsync();
+            var currentAttachmentId = entity.AttachmentId;
 
-            var newAttachments = updateEntryRequest
-                .Attachments?.Select(a => new AttachmentComparisonDto
-                {
-                    ContentHash = a.ContentHash,
-                    OriginalFileName = a.File.FileName,
-                    InternalFileName = "",
-                })
-                .ToList();
+            if (currentAttachmentId == null && updateEntryRequest.EncryptedAttachments == null)
+                return;
 
-            if (newAttachments == null || newAttachments.Count == 0)
+            if (updateEntryRequest.EncryptedAttachments == null)
             {
-                if (entityId.StartsWith("draft-"))
-                {
-                    await _dbContext
-                        .Attachments.Where(a => a.DraftId == entityId)
-                        .ExecuteDeleteAsync();
-                }
-                else if (entityId.StartsWith("entry-"))
-                {
-                    await _dbContext
-                        .Attachments.Where(a => a.EntryId == entityId)
-                        .ExecuteDeleteAsync();
-                }
+                entity.AttachmentId = null;
+                entity.AttachmentPath = null;
+                entity.ThumbnailPath = null;
+                entity.AttachmentHash = null;
 
-                await _dbContext.SaveChangesAsync();
-                await _fileStorageService.DeleteAllAttachment(entityId);
+                await _fileStorageService.DeleteSavedAttachment(entityId, userId);
+
                 return;
             }
 
-            var currentSet = currentAttachments.ToHashSet();
-            var newSet = newAttachments.ToHashSet();
-
-            var attachmentsToDelete = currentSet
-                .ExceptBy(newSet.Select(n => n.ContentHash), c => c.ContentHash)
-                .ToList();
-            var attachmentsToAdd = newSet
-                .ExceptBy(currentSet.Select(c => c.ContentHash), n => n.ContentHash)
-                .ToList();
-            var attachmentsToKeep = currentSet
-                .IntersectBy(newSet.Select(n => n.ContentHash), c => c.ContentHash)
-                .ToList();
-
-            if (attachmentsToDelete.Count > 0)
+            if (currentAttachmentId == null)
             {
-                var hashesToDelete = attachmentsToDelete.Select(a => a.ContentHash).ToList();
-
-                await _dbContext
-                    .Attachments.Where(a => hashesToDelete.Contains(a.ContentHash))
-                    .ExecuteDeleteAsync();
+                await AddAttachmentsAsync(entity, updateEntryRequest, userId);
+                return;
             }
 
-            foreach (var addAttachment in attachmentsToAdd)
+            if (!AreHashesIdentical(entity.AttachmentHash, updateEntryRequest.AttachmentHash))
             {
-                var file = updateEntryRequest
-                    .Attachments?.Where(a =>
-                        a.ContentHash == addAttachment.ContentHash
-                        && a.File.FileName == addAttachment.OriginalFileName
-                    )
-                    .FirstOrDefault();
-                var path = await _fileStorageService.SaveAttachment(file!.File, entityId);
-                var attachment = new Attachment
-                {
-                    InternalFileName = path.InternalFileName,
-                    OriginalFileName = file.File.FileName,
-                    FilePath = path.FilePath,
-                    ThumbnailPath = path.ThumbnailPath,
-                    ContentHash = file.ContentHash,
-                    CreatedAt = DateTime.UtcNow,
-                };
+                await _fileStorageService.DeleteSavedAttachment(entityId, userId);
+                await AddAttachmentsAsync(entity, updateEntryRequest, userId);
 
-                entity.LinkAttachment(attachment);
-                await _dbContext.Attachments.AddAsync(attachment);
+                return;
             }
 
-            await RenameOriginalFileNamesAsync(attachmentsToKeep, updateEntryRequest);
-            await _dbContext.SaveChangesAsync();
-            await _fileStorageService.DeleteAttachmentAndThumbnail(attachmentsToDelete, entityId);
+            return;
         }
 
         protected async Task AddAttachmentsAsync(
             TEntity entity,
-            IRequestDto<AttachmentObjRequest> newRequest
+            IRequestDto newRequest,
+            Guid userId
         )
         {
-            if (newRequest.Attachments != null && newRequest.Attachments.Count > 0)
+            if (newRequest.EncryptedAttachments != null)
             {
-                foreach (var file in newRequest.Attachments)
-                {
-                    var path = await _fileStorageService.SaveAttachment(file.File, entity.EntityId);
+                var path = await _fileStorageService.SaveAttachment(
+                    newRequest.EncryptedAttachments,
+                    newRequest.EncryptedThumbnails,
+                    entity.EntityId,
+                    userId
+                );
+                entity.AttachmentId = path.AttachmentId;
+                entity.AttachmentPath = path.AttachmentPath;
+                entity.ThumbnailPath = path.ThumbnailPath;
+                entity.AttachmentHash = newRequest.AttachmentHash;
 
-                    var attachment = new Attachment
-                    {
-                        InternalFileName = path.InternalFileName,
-                        OriginalFileName = file.File.FileName,
-                        FilePath = path.FilePath,
-                        ThumbnailPath = path.ThumbnailPath,
-                        ContentHash = file.ContentHash,
-                        CreatedAt = DateTime.UtcNow,
-                    };
-
-                    entity.LinkAttachment(attachment);
-                    await _dbContext.Attachments.AddAsync(attachment);
-                }
+                await _dbContext.SaveChangesAsync();
             }
         }
 
-        private async Task RenameOriginalFileNamesAsync(
-            List<AttachmentComparisonDto> attachmentsToKeep,
-            IRequestDto<AttachmentObjRequest> updateEntryRequest
-        )
+        private bool AreHashesIdentical(string currentHashJson, string newHashJson)
         {
-            if (attachmentsToKeep == null || !attachmentsToKeep.Any())
-                return;
+            if (currentHashJson == null || newHashJson == null)
+                return false;
 
-            var hashes = attachmentsToKeep.Select(a => a.ContentHash).ToList();
+            var newHashes = JsonSerializer.Deserialize<List<string>>(newHashJson);
+            var currentHashes = JsonSerializer.Deserialize<List<string>>(currentHashJson);
 
-            var originalAttachments = await _dbContext
-                .Attachments.Where(a => hashes.Contains(a.ContentHash))
-                .ToListAsync();
+            if (newHashes == null || currentHashes == null)
+                return false;
+            if (newHashes.Count != currentHashes.Count)
+                return false;
 
-            var newAttachmentsDict = updateEntryRequest
-                .Attachments?.Where(a => a.ContentHash != null)
-                .ToDictionary(a => a.ContentHash);
+            var set1 = new HashSet<string>(newHashes);
+            var set2 = new HashSet<string>(currentHashes);
 
-            if (newAttachmentsDict == null)
-                return;
-
-            foreach (var original in originalAttachments)
-            {
-                if (!newAttachmentsDict.TryGetValue(original.ContentHash, out var newAttachment))
-                    continue;
-
-                var newFileName = newAttachment.File?.FileName;
-
-                if (
-                    string.IsNullOrEmpty(original.OriginalFileName)
-                    || string.IsNullOrEmpty(newFileName)
-                )
-                    continue;
-
-                if (
-                    !string.Equals(original.OriginalFileName, newFileName, StringComparison.Ordinal)
-                )
-                {
-                    original.OriginalFileName = newFileName;
-                }
-            }
+            return set1.SetEquals(set2);
         }
     }
 }

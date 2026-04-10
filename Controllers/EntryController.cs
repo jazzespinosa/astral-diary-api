@@ -27,23 +27,17 @@ namespace AstralDiaryApi.Controllers
 
         [HttpPost("create")]
         [Authorize]
-        public async Task<IActionResult> CreateEntry(
-            [FromForm] NewEntryRequestRaw newEntryRequestRaw
-        )
+        public async Task<IActionResult> CreateEntry([FromForm] NewEntryRequest newEntryRequest)
         {
             var userId = await GetUserId();
-            var processedRequestDto = new NewEntryRequestProcessed
-            {
-                Date = newEntryRequestRaw.Date,
-                Title = newEntryRequestRaw.Title,
-                Content = newEntryRequestRaw.Content,
-                Mood = newEntryRequestRaw.Mood,
-                Attachments = await AttachmentHelper.ProcessAttachmentsAsync(
-                    newEntryRequestRaw.Attachments
-                ),
-            };
+            var dateNow = Request.GetUserLocalDate();
 
-            var response = await _entryService.Create(userId, processedRequestDto);
+            if (newEntryRequest.Date > dateNow)
+            {
+                return BadRequest("Entry date cannot be in the future.");
+            }
+
+            var response = await _entryService.Create(userId, newEntryRequest);
             var uri = Url.Action("GetEntry", "Entry", new { entryId = response.Id });
 
             return Created(uri, response);
@@ -51,7 +45,7 @@ namespace AstralDiaryApi.Controllers
 
         [HttpGet("get-calendar-entries")]
         [Authorize]
-        public async Task<IActionResult> GetCalendarEntries(DateOnly date)
+        public async Task<IActionResult> GetCalendarEntries([FromQuery] DateOnly date)
         {
             var userId = await GetUserId();
             var response = await _entryService.GetCalendarEntries(userId, date);
@@ -82,6 +76,16 @@ namespace AstralDiaryApi.Controllers
             return Ok(response);
         }
 
+        [HttpGet("get/entry-ids")]
+        [Authorize]
+        public async Task<IActionResult> GetEntryIds()
+        {
+            var userId = await GetUserId();
+            var response = await _entryService.GetEntryIds(userId);
+
+            return Ok(response);
+        }
+
         [HttpGet("get/{entryId}")]
         [Authorize]
         public async Task<IActionResult> GetEntry(string entryId)
@@ -96,26 +100,21 @@ namespace AstralDiaryApi.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateEntry(
             string entryId,
-            [FromForm] UpdateEntryRequestRaw updateEntryRequestRaw
+            [FromForm] UpdateEntryRequest updateEntryRequest
         )
         {
-            if (entryId != updateEntryRequestRaw.Id)
+            if (entryId != updateEntryRequest.Id)
                 return BadRequest("Entry Id does not match.");
 
             var userId = await GetUserId();
-            var processedRequestDto = new UpdateEntryRequestProcessed
-            {
-                Id = updateEntryRequestRaw.Id,
-                Date = updateEntryRequestRaw.Date,
-                Title = updateEntryRequestRaw.Title,
-                Content = updateEntryRequestRaw.Content,
-                Mood = updateEntryRequestRaw.Mood,
-                Attachments = await AttachmentHelper.ProcessAttachmentsAsync(
-                    updateEntryRequestRaw.Attachments
-                ),
-            };
+            var dateNow = Request.GetUserLocalDate();
 
-            var response = await _entryService.Update(userId, processedRequestDto);
+            if (updateEntryRequest.Date > dateNow)
+            {
+                return BadRequest("Entry date cannot be in the future.");
+            }
+
+            var response = await _entryService.Update(userId, updateEntryRequest);
 
             return Ok(response);
         }
@@ -131,6 +130,25 @@ namespace AstralDiaryApi.Controllers
                 return StatusCode(StatusCodes.Status204NoContent);
 
             return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+
+        [HttpGet("get-deleted-entries")]
+        [Authorize]
+        public async Task<IActionResult> GetDeletedEntries()
+        {
+            var userId = await GetUserId();
+            var response = await _entryService.GetDeletedEntries(userId);
+            return Ok(response);
+        }
+
+        [HttpPut("restore")]
+        [Authorize]
+        public async Task<IActionResult> RestoreEntries([FromBody] string[] entryIds)
+        {
+            var userId = await GetUserId();
+            var response = await _entryService.RestoreEntries(userId, entryIds);
+
+            return Ok(new { result = response, message = "Entries restored successfully." });
         }
 
         private async Task<Guid> GetUserId()

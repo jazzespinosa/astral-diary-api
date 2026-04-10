@@ -3,7 +3,7 @@ using AstralDiaryApi.Common.Interfaces;
 
 namespace AstralDiaryApi.Models.Entities
 {
-    public class Draft : IAttachmentSource, IEntityIdSource
+    public class Draft : IEntityIdSource
     {
         [Column("id")]
         public int Id { get; set; }
@@ -23,29 +23,37 @@ namespace AstralDiaryApi.Models.Entities
         [Column("date", TypeName = "date")]
         public DateOnly Date { get; set; }
 
-        [Column("title")]
-        public string? Title { get; set; }
-
-        [Column("content")]
-        public string? Content { get; set; }
-
         [Column("mood")]
         public int Mood { get; set; }
 
-        public User User { get; set; } // Navigation property
+        [Column("encrypted_content")]
+        public required string EncryptedContent { get; set; }
 
-        public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+        [Column("content_iv")]
+        public required string ContentIv { get; set; }
+
+        [Column("content_salt")]
+        public required string ContentSalt { get; set; }
+
+        [Column("attachment_id")]
+        public string? AttachmentId { get; set; }
+
+        [Column("att_file_path")]
+        public string? AttachmentPath { get; set; }
+
+        [Column("att_thumbnail_path")]
+        public string? ThumbnailPath { get; set; }
+
+        [Column("attachment_hash")]
+        public string? AttachmentHash { get; set; }
+
+        public User User { get; set; } // Navigation property
 
         [NotMapped]
         public string DraftId
         {
             get => EntityId;
             set => EntityId = value;
-        }
-
-        public void LinkAttachment(Attachment attachment)
-        {
-            attachment.DraftId = this.EntityId;
         }
 
         private static int _sequence = 0;

@@ -7,7 +7,6 @@ using AstralDiaryApi.Models.DTOs.Attachments;
 using AstralDiaryApi.Models.DTOs.Entries.Delete;
 using AstralDiaryApi.Models.Entities;
 using AstralDiaryApi.Services.Interfaces;
-using ImageMagick;
 using Microsoft.EntityFrameworkCore;
 
 namespace AstralDiaryApi.Services.Implementations
@@ -23,38 +22,54 @@ namespace AstralDiaryApi.Services.Implementations
             _env = env;
         }
 
-        public async Task<AttachmentObjResponse> SaveAttachment(IFormFile file, string entityId)
+        public async Task<AttachmentObject> SaveAttachment(
+            IFormFile attachmentFile,
+            IFormFile thumbnailFile,
+            string entityId,
+            Guid userId
+        )
         {
             if (_env.IsDevelopment())
             {
-                var newFileName = Guid.NewGuid().ToString();
-                var fileExtension = Path.GetExtension(file.FileName);
-                var completeNewFileName = newFileName + fileExtension;
+                var attachmentId = Guid.NewGuid().ToString();
+                var fileExtension = Path.GetExtension(attachmentFile.FileName);
+                var completeAttachmentFileName = attachmentId + fileExtension;
 
-                var filePath = Path.Combine(
+                var thumbnailExtension = Path.GetExtension(thumbnailFile.FileName);
+                var completeThumbnailFileName = attachmentId + "-thumbnail" + thumbnailExtension;
+
+                var basePath = Path.Combine(
                     "Storage",
                     "attachments",
-                    entityId,
-                    completeNewFileName
-                );
-                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await file.CopyToAsync(stream);
-
-                stream.Position = 0;
-                string thumbnailPath = await CreateThumbnail(
-                    stream,
-                    entityId,
-                    newFileName,
-                    fileExtension
+                    userId.ToString().ToLower(),
+                    entityId
                 );
 
-                var response = new AttachmentObjResponse
+                var attachmentFilePath = Path.Combine(basePath, completeAttachmentFileName);
+                var thumbnailFilePath = Path.Combine(basePath, completeThumbnailFileName);
+
+                try
                 {
-                    FilePath = filePath,
-                    ThumbnailPath = thumbnailPath,
-                    InternalFileName = completeNewFileName,
-                    OriginalFileName = file.FileName,
+                    Directory.CreateDirectory(Path.GetDirectoryName(attachmentFilePath));
+                    using var streamAttachment = new FileStream(
+                        attachmentFilePath,
+                        FileMode.Create
+                    );
+                    await attachmentFile.CopyToAsync(streamAttachment);
+
+                    using var streamThumbnail = new FileStream(thumbnailFilePath, FileMode.Create);
+                    await thumbnailFile.CopyToAsync(streamThumbnail);
+                }
+                catch (Exception ex)
+                {
+                    throw new IOException($"Error saving attachment: {ex.Message}");
+                }
+
+                var response = new AttachmentObject
+                {
+                    AttachmentPath = attachmentFilePath,
+                    ThumbnailPath = thumbnailFilePath,
+                    AttachmentId = attachmentId,
                 };
 
                 return response;
@@ -66,132 +81,38 @@ namespace AstralDiaryApi.Services.Implementations
             }
         }
 
-        private async Task<string> CreateThumbnail(
-            FileStream stream,
-            string entityId,
-            string fileName,
-            string fileExtension
-        )
-        {
-            var thumbnailFileName = $"{fileName}-thumbnail";
-            var completeThumbnailFileName = thumbnailFileName + fileExtension;
-
-            using var thumbnail = new MagickImage(stream);
-            var size = new MagickGeometry(100, 100);
-            thumbnail.Resize(size);
-            var thumbnailPath = Path.Combine(
-                "Storage",
-                "attachments",
-                entityId,
-                "thumbnails",
-                completeThumbnailFileName
-            );
-            Directory.CreateDirectory(Path.GetDirectoryName(thumbnailPath));
-            thumbnail.Write($"{thumbnailPath}");
-
-            return thumbnailPath;
-        }
-
-        public async Task<FileDownloadResult> GetAttachment(
+        public async Task<FileDownloadResult> GetAttachmentFile<TEntity>(
             Guid userId,
             string entityId,
-            string internalFileName
+            string attachmentType,
+            string attachmentId
         )
+            where TEntity : class, IEntityIdSource
         {
-            var attachmentPath = "";
-            if (entityId.StartsWith("entry-"))
-            {
-                attachmentPath = await GetAttachmentPath<Entry>(userId, entityId, internalFileName);
-            }
-            else if (entityId.StartsWith("draft-"))
-            {
-                attachmentPath = await GetAttachmentPath<Draft>(userId, entityId, internalFileName);
-            }
-            else
-            {
-                throw new NotFoundException("File not found");
-            }
-
-            if (attachmentPath == null)
-                throw new NotFoundException("File not found");
-
-            //var filePath = Path.Combine("Storage", "attachments", entityId, internalFileName);
-
-            return await GetFile(attachmentPath, internalFileName);
-        }
-
-        public async Task<FileDownloadResult> GetThumbnail(
-            Guid userId,
-            string entityId,
-            string internalFileName
-        )
-        {
-            var thumbnailPath = "";
-            if (entityId.StartsWith("entry-"))
-            {
-                thumbnailPath = await GetThumbnailPath<Entry>(userId, entityId, internalFileName);
-            }
-            else if (entityId.StartsWith("draft-"))
-            {
-                thumbnailPath = await GetThumbnailPath<Draft>(userId, entityId, internalFileName);
-            }
-            else
-            {
-                throw new NotFoundException("File not found");
-            }
-
-            if (thumbnailPath == null)
-                throw new NotFoundException("File not found");
-
-            //var fileName = Path.GetFileNameWithoutExtension(internalFileName);
-            //var fileExtension = Path.GetExtension(internalFileName);
-
-            //var filePath = Path.Combine(
-            //    "Storage",
-            //    "attachments",
-            //    entityId,
-            //    "thumbnails",
-            //    $"{fileName}-thumbnail{fileExtension}"
-            //);
-
-            return await GetFile(thumbnailPath, internalFileName);
-        }
-
-        private async Task<string?> GetThumbnailPath<TEntity>(
-            Guid userId,
-            string entityId,
-            string internalFileName
-        )
-            where TEntity : class, IAttachmentSource, IEntityIdSource
-        {
-            return await _dbContext
+            var query = _dbContext
                 .Set<TEntity>()
                 .AsNoTracking()
-                .Where(e => e.EntityId == entityId && e.UserId == userId)
-                .SelectMany(e => e.Attachments)
-                .Where(a => a.InternalFileName == internalFileName)
-                .Select(a => a.ThumbnailPath)
-                .FirstOrDefaultAsync();
+                .IgnoreQueryFilters()
+                .Where(e =>
+                    e.UserId == userId && e.EntityId == entityId && e.AttachmentId == attachmentId
+                );
+
+            var pathQuery = attachmentType.ToLower() switch
+            {
+                "thumbnail" => query.Select(e => e.ThumbnailPath),
+                "attachment" => query.Select(e => e.AttachmentPath),
+                _ => throw new ArgumentException("Invalid attachment type."),
+            };
+
+            var path = await pathQuery.FirstOrDefaultAsync();
+
+            if (path == null)
+                throw new NotFoundException("File not found");
+
+            return await GetFile(path);
         }
 
-        private async Task<string?> GetAttachmentPath<TEntity>(
-            Guid userId,
-            string entityId,
-            string internalFileName
-        )
-            where TEntity : class, IAttachmentSource, IEntityIdSource
-        {
-            return await _dbContext
-                .Set<TEntity>()
-                .AsNoTracking()
-                .Where(e => e.EntityId == entityId && e.UserId == userId)
-                .SelectMany(e => e.Attachments)
-                .Where(a => a.InternalFileName == internalFileName)
-                .Select(a => a.FilePath)
-                .FirstOrDefaultAsync();
-        }
-
-        private async Task<FileDownloadResult> GetFile(string filePath, string internalFileName)
+        private async Task<FileDownloadResult> GetFile(string filePath)
         {
             try
             {
@@ -201,7 +122,7 @@ namespace AstralDiaryApi.Services.Implementations
                 }
 
                 var fileBytes = await File.ReadAllBytesAsync(filePath);
-                var fileNameSafe = Path.GetFileName(internalFileName);
+                var fileNameSafe = Path.GetFileName(filePath);
                 var response = new FileDownloadResult
                 {
                     FileBytes = fileBytes,
@@ -215,74 +136,26 @@ namespace AstralDiaryApi.Services.Implementations
             }
         }
 
-        public Task<DeleteAttachmentsResult> DeleteAttachmentAndThumbnail(
-            List<AttachmentComparisonDto> attachmentsToDelete,
-            string entityId
-        )
+        public Task DeleteSavedAttachment(string entityId, Guid userId)
         {
-            var basePath = Path.Combine("Storage", "attachments", entityId);
-            var result = new DeleteAttachmentsResult { SuccessAll = true };
-
-            foreach (var attachment in attachmentsToDelete)
-            {
-                try
-                {
-                    var safeFileName = Path.GetFileName(attachment.InternalFileName);
-                    var filePath = Path.Combine(basePath, safeFileName);
-
-                    var fileNameWithoutExt = Path.GetFileNameWithoutExtension(safeFileName);
-                    var fileExtension = Path.GetExtension(safeFileName);
-                    var thumbnailPath = Path.Combine(
-                        basePath,
-                        "thumbnails",
-                        $"{fileNameWithoutExt}-thumbnail{fileExtension}"
-                    );
-
-                    if (File.Exists(filePath))
-                        File.Delete(filePath);
-
-                    if (File.Exists(thumbnailPath))
-                        File.Delete(thumbnailPath);
-
-                    result.DeletedCount++;
-                }
-                catch (Exception ex)
-                {
-                    result.FailedFiles.Add(attachment);
-                }
-            }
-
-            if (result.FailedFiles.Count > 0 || result.DeletedCount < attachmentsToDelete.Count)
-                result.SuccessAll = false;
-
-            return Task.FromResult(result);
-        }
-
-        public Task<DeleteAllAttachmentsResult> DeleteAllAttachment(string entityId)
-        {
-            var basePath = Path.Combine("Storage", "attachments", entityId);
-            var result = new DeleteAllAttachmentsResult();
+            var basePath = Path.Combine(
+                "Storage",
+                "attachments",
+                userId.ToString().ToLower(),
+                entityId
+            );
 
             try
             {
                 if (!Directory.Exists(basePath))
-                {
-                    result.Success = false;
-                    return Task.FromResult(result);
-                }
+                    return Task.CompletedTask;
 
                 Directory.Delete(basePath, recursive: true);
-                result.Success = true;
-
-                return Task.FromResult(result);
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                result.Success = false;
-                result.ErrorMessage = ex.Message;
-                result.Exception = ex;
-
-                return Task.FromResult(result);
+                throw new IOException($"Error deleting attachment: {ex.Message}");
             }
         }
     }

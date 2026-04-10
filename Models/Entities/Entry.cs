@@ -3,7 +3,7 @@ using AstralDiaryApi.Common.Interfaces;
 
 namespace AstralDiaryApi.Models.Entities
 {
-    public class Entry : IAttachmentSource, IEntityIdSource
+    public class Entry : IEntityIdSource
     {
         [Column("id")]
         public int Id { get; set; }
@@ -23,14 +23,17 @@ namespace AstralDiaryApi.Models.Entities
         [Column("date", TypeName = "date")]
         public DateOnly Date { get; set; }
 
-        [Column("title")]
-        public required string Title { get; set; }
-
-        [Column("content")]
-        public required string Content { get; set; }
-
         [Column("mood")]
         public int Mood { get; set; }
+
+        [Column("encrypted_content")]
+        public required string EncryptedContent { get; set; }
+
+        [Column("content_iv")]
+        public required string ContentIv { get; set; }
+
+        [Column("content_salt")]
+        public required string ContentSalt { get; set; }
 
         [Column("published_at", TypeName = "timestamp")]
         public DateTime? PublishedAt { get; set; }
@@ -41,20 +44,25 @@ namespace AstralDiaryApi.Models.Entities
         [Column("deleted_at", TypeName = "timestamp")]
         public DateTime? DeletedAt { get; set; }
 
-        public User User { get; set; } // Navigation property
+        [Column("attachment_id")]
+        public string? AttachmentId { get; set; }
 
-        public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+        [Column("att_file_path")]
+        public string? AttachmentPath { get; set; }
+
+        [Column("att_thumbnail_path")]
+        public string? ThumbnailPath { get; set; }
+
+        [Column("attachment_hash")]
+        public string? AttachmentHash { get; set; }
+
+        public User User { get; set; } // Navigation property
 
         [NotMapped]
         public string EntryId
         {
             get => EntityId;
             set => EntityId = value;
-        }
-
-        public void LinkAttachment(Attachment attachment)
-        {
-            attachment.EntryId = this.EntityId;
         }
 
         private static int _sequence = 0;

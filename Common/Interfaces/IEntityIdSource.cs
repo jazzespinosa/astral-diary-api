@@ -8,8 +8,13 @@
         DateTime CreatedAt { get; set; }
         DateTime ModifiedAt { get; set; }
         DateOnly Date { get; set; }
-        string? Title { get; set; }
-        string? Content { get; set; }
         int Mood { get; set; }
+        string EncryptedContent { get; set; }
+        string ContentIv { get; set; }
+        string ContentSalt { get; set; }
+        string? AttachmentId { get; set; }
+        string? AttachmentPath { get; set; }
+        string? ThumbnailPath { get; set; }
+        string? AttachmentHash { get; set; }
     }
 }

@@ -2,17 +2,7 @@
 
 namespace AstralDiaryApi.Models.DTOs.Entries.New
 {
-    public class NewEntryRequestRaw : BaseRequestDto<IFormFile>
-    {
-        public override required string Title { get; set; }
-        public override required string Content { get; set; }
-    }
-
-    public class NewEntryRequestProcessed : BaseRequestDto<AttachmentObjRequest>
-    {
-        public override required string Title { get; set; }
-        public override required string Content { get; set; }
-    }
+    public class NewEntryRequest : BaseRequestDto { }
 
     public class NewEntryResponse : BaseResponseDto
     {
@@ -21,12 +11,9 @@ namespace AstralDiaryApi.Models.DTOs.Entries.New
             get => Id;
             set => Id = value;
         }
-        public override required string Title { get; set; }
     }
 
-    public class NewDraftRequestRaw : BaseRequestDto<IFormFile> { }
-
-    public class NewDraftRequestProcessed : BaseRequestDto<AttachmentObjRequest> { }
+    public class NewDraftRequest : BaseRequestDto { }
 
     public class NewDraftResponse : BaseResponseDto
     {

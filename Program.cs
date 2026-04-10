@@ -4,7 +4,6 @@ using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
-using ImageMagick;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,7 +20,8 @@ FirebaseApp.Create(
 );
 
 // Get connection string from config then add db context
-var connectionString = builder.Configuration["ConnectionString"];
+//var connectionString = builder.Configuration["ConnectionString:DefaultConnection"];
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException("Connection string is not set.");
@@ -46,7 +46,6 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEntryService, EntryService>();
 builder.Services.AddScoped<IDraftService, DraftService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
-builder.Services.AddSingleton<IAttachmentTokenService, AttachmentTokenService>();
 
 builder.Services.AddMemoryCache();
 
@@ -123,8 +122,6 @@ else
 {
     app.UseCors();
 }
-
-MagickNET.Initialize();
 
 app.UseExceptionHandler("/error");
 app.UseHttpsRedirection();

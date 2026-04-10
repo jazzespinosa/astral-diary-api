@@ -4,7 +4,7 @@ namespace AstralDiaryApi.Models.DTOs.Entries.Get
 {
     public class GetDraftRequest { }
 
-    public class GetDraftResponse : BaseGetResponse
+    public class GetDraftResponse : GetResponse
     {
         public string DraftId
         {

@@ -1,33 +1,25 @@
-﻿using System.Net;
-using System.Net.Mail;
-using System.Net.NetworkInformation;
+﻿using System.Data;
 using AstralDiaryApi.Common.Generics;
-using AstralDiaryApi.Common.Helpers;
 using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Data;
 using AstralDiaryApi.Exceptions;
-using AstralDiaryApi.Models.DTOs;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Models.DTOs.Users;
 using AstralDiaryApi.Models.Entities;
-using AstralDiaryApi.Models.Enums;
 using AstralDiaryApi.Services.Interfaces;
-using ImageMagick;
 using Microsoft.EntityFrameworkCore;
-using MySqlConnector;
-using Attachment = AstralDiaryApi.Models.Entities.Attachment;
 
 namespace AstralDiaryApi.Services.Implementations
 {
     public class EntryService
         : BaseEntryService<
             Entry,
-            NewEntryRequestProcessed,
+            NewEntryRequest,
             NewEntryResponse,
             GetEntryResponse,
-            UpdateEntryRequestProcessed,
+            UpdateEntryRequest,
             UpdateEntryResponse
         >,
             IEntryService
@@ -37,7 +29,7 @@ namespace AstralDiaryApi.Services.Implementations
 
         public override async Task<NewEntryResponse> Create(
             Guid userId,
-            NewEntryRequestProcessed newEntryRequest
+            NewEntryRequest newEntryRequest
         )
         {
             var entry = new Entry
@@ -46,51 +38,47 @@ namespace AstralDiaryApi.Services.Implementations
                 CreatedAt = DateTime.UtcNow,
                 ModifiedAt = DateTime.UtcNow,
                 Date = newEntryRequest.Date,
-                Title = newEntryRequest.Title,
-                Content = newEntryRequest.Content,
                 Mood = newEntryRequest.Mood,
-                Attachments = new List<Attachment>(),
+                EncryptedContent = newEntryRequest.EncryptedContent,
+                ContentIv = newEntryRequest.ContentIv,
+                ContentSalt = newEntryRequest.ContentSalt,
             };
 
             await _dbContext.Entries.AddAsync(entry);
-            await AddAttachmentsAsync(entry, newEntryRequest);
+            await AddAttachmentsAsync(entry, newEntryRequest, userId);
             await _dbContext.SaveChangesAsync();
 
-            var newEntryResponse = new NewEntryResponse
-            {
-                Id = entry.EntityId,
-                Date = entry.Date,
-                Title = entry.Title,
-            };
-
-            return newEntryResponse;
+            return new NewEntryResponse { Id = entry.EntityId };
         }
 
         public override async Task<GetEntryResponse> Get(Guid userId, string entryId)
         {
-            var entry = await FindByIdAsync(userId, entryId);
+            var entry = await FindByIdAsync(userId, entryId, DocuType.Entry);
 
             if (entry == null)
-                throw new ArgumentException("Entry not found");
+                throw new NotFoundException("Entry not found");
 
-            var response = new GetEntryResponse
+            return new GetEntryResponse
             {
                 Id = entry.Id,
+                DocuType = entry.DocuType,
                 Date = entry.Date,
-                Title = entry.Title ?? "",
-                Content = entry.Content ?? "",
                 Mood = entry.Mood,
-                Attachments = entry.Attachments,
+                EncryptedContent = entry.EncryptedContent,
+                ContentIv = entry.ContentIv,
+                ContentSalt = entry.ContentSalt,
+                AttachmentId = entry.AttachmentId,
+                AttachmentHash = entry.AttachmentHash,
                 CreatedAt = entry.CreatedAt,
                 ModifiedAt = entry.ModifiedAt,
+                DeletedAt = entry.DeletedAt,
+                PublishedAt = entry.PublishedAt,
             };
-
-            return response;
         }
 
         public override async Task<UpdateEntryResponse> Update(
             Guid userId,
-            UpdateEntryRequestProcessed updateEntryRequest
+            UpdateEntryRequest updateEntryRequest
         )
         {
             var entryId = updateEntryRequest.Id;
@@ -100,26 +88,20 @@ namespace AstralDiaryApi.Services.Implementations
                 throw new NotFoundException("Entry not found");
 
             await UpdateContentsAsync(userId, entry, updateEntryRequest);
-            await CompareAndUpdateAttachmentsAsync(userId, entryId, entry, updateEntryRequest);
+            await UpdateAttachmentsAsync(userId, entryId, entry, updateEntryRequest);
             await _dbContext.SaveChangesAsync();
 
-            var response = new UpdateEntryResponse
-            {
-                Id = entryId,
-                Date = updateEntryRequest.Date,
-                Title = updateEntryRequest.Title,
-            };
-
-            return response;
+            return new UpdateEntryResponse { Id = entry.EntityId };
         }
 
-        public async Task AddDraftPublishToEntryAsync(
+        public async Task PublishDraftToEntryAsync(
             Entry entry,
-            UpdateDraftRequestProcessed updateDraftRequest
+            Guid userId,
+            UpdateDraftRequest updateDraftRequest
         )
         {
             await _dbContext.Entries.AddAsync(entry);
-            await AddAttachmentsAsync(entry, updateDraftRequest);
+            await AddAttachmentsAsync(entry, updateDraftRequest, userId);
         }
 
         public async Task<bool> SoftDeleteEntry(Guid userId, string entryId)
@@ -138,10 +120,27 @@ namespace AstralDiaryApi.Services.Implementations
             return true;
         }
 
+        public async Task<List<GetEntryIdResponse>> GetEntryIds(Guid userId)
+        {
+            var response = new List<GetEntryIdResponse>();
+
+            var entryIds = await _dbContext
+                .Entries.AsNoTracking()
+                .Where(e => e.UserId == userId)
+                .Select(e => e.EntityId)
+                .ToListAsync();
+
+            for (int i = 0; i < entryIds.Count; i++)
+            {
+                response.Add(new GetEntryIdResponse { Id = (i + 1), EntryId = entryIds[i] });
+            }
+
+            return response;
+        }
+
         public async Task<List<GetEntryResponse>> GetCalendarEntries(Guid userId, DateOnly date)
         {
-            var response = new List<GetEntryResponse>();
-            var entries = await _dbContext
+            return await _dbContext
                 .Entries.AsNoTracking()
                 .Where(e =>
                     e.UserId == userId
@@ -152,37 +151,24 @@ namespace AstralDiaryApi.Services.Implementations
                 .Select(e => new GetEntryResponse
                 {
                     Id = e.EntityId,
+                    DocuType = DocuType.Entry,
                     Date = e.Date,
-                    Title = e.Title,
-                    Content = e.Content,
                     Mood = e.Mood,
-                    Attachments = e
-                        .Attachments.Where(a => a.InternalFileName != null)
-                        .Select(a => new AttachmentObjResponse
-                        {
-                            FilePath = a.FilePath,
-                            ThumbnailPath = a.ThumbnailPath,
-                            InternalFileName = a.InternalFileName,
-                            OriginalFileName = a.OriginalFileName,
-                        })
-                        .ToList(),
+                    EncryptedContent = e.EncryptedContent,
+                    ContentIv = e.ContentIv,
+                    ContentSalt = e.ContentSalt,
+                    AttachmentId = e.AttachmentId,
+                    AttachmentHash = e.AttachmentHash,
                     CreatedAt = e.CreatedAt,
                     ModifiedAt = e.ModifiedAt,
+                    PublishedAt = e.PublishedAt,
                 })
                 .ToListAsync();
-
-            foreach (var entry in entries)
-            {
-                response.Add(entry);
-            }
-
-            return response;
         }
 
         public async Task<List<GetEntryResponse>> GetRecentEntries(Guid userId, int limit)
         {
-            var response = new List<GetEntryResponse>();
-            var entries = await _dbContext
+            return await _dbContext
                 .Entries.AsNoTracking()
                 .Where(e => e.UserId == userId)
                 .OrderByDescending(e => e.Date)
@@ -190,160 +176,23 @@ namespace AstralDiaryApi.Services.Implementations
                 .Select(e => new GetEntryResponse
                 {
                     Id = e.EntityId,
+                    DocuType = DocuType.Entry,
                     Date = e.Date,
-                    Title = e.Title,
-                    Content = e.Content,
                     Mood = e.Mood,
-                    Attachments = e
-                        .Attachments.Where(a => a.InternalFileName != null)
-                        .Select(a => new AttachmentObjResponse
-                        {
-                            FilePath = a.FilePath,
-                            ThumbnailPath = a.ThumbnailPath,
-                            InternalFileName = a.InternalFileName,
-                            OriginalFileName = a.OriginalFileName,
-                        })
-                        .ToList(),
+                    EncryptedContent = e.EncryptedContent,
+                    ContentIv = e.ContentIv,
+                    ContentSalt = e.ContentSalt,
+                    AttachmentId = e.AttachmentId,
+                    AttachmentHash = e.AttachmentHash,
                     CreatedAt = e.CreatedAt,
                     ModifiedAt = e.ModifiedAt,
+                    PublishedAt = e.PublishedAt,
                 })
                 .Take(limit)
                 .ToListAsync();
-
-            foreach (var entry in entries)
-            {
-                response.Add(entry);
-            }
-
-            return response;
         }
 
         public async Task<PagedResult<GetEntryResponse>> SearchAsync(
-            Guid userId,
-            GetSearchEntryRequest getSearchEntriesRequest
-        )
-        {
-            if (string.IsNullOrWhiteSpace(getSearchEntriesRequest.SearchTerm))
-                return await GetBlankSearchPagedAsync(userId, getSearchEntriesRequest);
-
-            var term = getSearchEntriesRequest.SearchTerm.Trim();
-            var booleanTerm = string.Join(
-                " ",
-                term.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => $"+{w}*")
-            );
-
-            //var totalCount = await CountFullTextAsync(userId, booleanTerm);
-
-            var offset = (getSearchEntriesRequest.Page - 1) * getSearchEntriesRequest.PageSize;
-
-            var sql =
-                $@"
-                SELECT *, 
-                       MATCH(title, content) AGAINST(@term IN BOOLEAN MODE) AS Score
-                FROM entries
-                WHERE user_id = @userId
-                  AND MATCH(title, content) AGAINST(@term IN BOOLEAN MODE)";
-
-            var query = _dbContext
-                .Entries.FromSqlRaw(
-                    sql,
-                    new MySqlParameter("@term", booleanTerm),
-                    new MySqlParameter("@userId", userId)
-                )
-                .AsNoTracking();
-
-            if (
-                getSearchEntriesRequest.DateFilter != null
-                && getSearchEntriesRequest.DateFilter?.ToLower() != "any"
-                && getSearchEntriesRequest.Date != null
-            )
-            {
-                var dateValue = getSearchEntriesRequest.Date;
-
-                query = getSearchEntriesRequest.DateFilter?.ToLower() switch
-                {
-                    "exact" => query.Where(e => e.Date == dateValue),
-                    "before" => query.Where(e => e.Date < dateValue),
-                    "after" => query.Where(e => e.Date > dateValue),
-                    _ => query,
-                };
-            }
-
-            if (getSearchEntriesRequest.Mood >= 1 && getSearchEntriesRequest.Mood <= 5)
-            {
-                query = query.Where(e => e.Mood == getSearchEntriesRequest.Mood);
-            }
-
-            var totalCount = await query.CountAsync();
-
-            query =
-                getSearchEntriesRequest.Sort?.ToLower() == "asc"
-                    ? query.OrderBy(e => e.Date).ThenBy(e => e.ModifiedAt)
-                    : query.OrderByDescending(e => e.Date).ThenByDescending(e => e.ModifiedAt);
-
-            var items = await query
-                .Skip(offset)
-                .Take(getSearchEntriesRequest.PageSize)
-                .Select(e => new GetEntryResponse
-                {
-                    Id = e.EntityId,
-                    Date = e.Date,
-                    Title = e.Title,
-                    Content = e.Content,
-                    Mood = e.Mood,
-                    Attachments = e
-                        .Attachments.Where(a => a.InternalFileName != null)
-                        .Select(a => new AttachmentObjResponse
-                        {
-                            FilePath = a.FilePath,
-                            ThumbnailPath = a.ThumbnailPath,
-                            InternalFileName = a.InternalFileName,
-                            OriginalFileName = a.OriginalFileName,
-                        })
-                        .ToList(),
-                    CreatedAt = e.CreatedAt,
-                    ModifiedAt = e.ModifiedAt,
-                })
-                .ToListAsync();
-
-            return new PagedResult<GetEntryResponse>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                Page = getSearchEntriesRequest.Page,
-                PageSize = getSearchEntriesRequest.PageSize,
-            };
-        }
-
-        //private async Task<int> CountFullTextAsync(Guid userId, string booleanTerm)
-        //{
-        //    await _dbContext.Database.OpenConnectionAsync();
-        //    try
-        //    {
-        //        using var cmd = _dbContext.Database.GetDbConnection().CreateCommand();
-        //        cmd.CommandText =
-        //            @"
-        //    SELECT COUNT(*) FROM entries
-        //    WHERE user_id = @userId
-        //      AND MATCH(title, content) AGAINST(@term IN BOOLEAN MODE)";
-        //        var userParam = cmd.CreateParameter();
-        //        userParam.ParameterName = "@userId";
-        //        userParam.Value = userId;
-        //        cmd.Parameters.Add(userParam);
-        //        var termParam = cmd.CreateParameter();
-        //        termParam.ParameterName = "@term";
-        //        termParam.Value = booleanTerm;
-        //        cmd.Parameters.Add(termParam);
-        //        var result = await cmd.ExecuteScalarAsync();
-        //        return Convert.ToInt32(result);
-        //    }
-        //    finally
-        //    {
-        //        await _dbContext.Database.CloseConnectionAsync();
-        //    }
-        //}
-
-        private async Task<PagedResult<GetEntryResponse>> GetBlankSearchPagedAsync(
             Guid userId,
             GetSearchEntryRequest getSearchEntriesRequest
         )
@@ -367,7 +216,7 @@ namespace AstralDiaryApi.Services.Implementations
                 };
             }
 
-            if (getSearchEntriesRequest.Mood >= 1 && getSearchEntriesRequest.Mood <= 5)
+            if (getSearchEntriesRequest.Mood >= 0 && getSearchEntriesRequest.Mood <= 5)
             {
                 query = query.Where(e => e.Mood == getSearchEntriesRequest.Mood);
             }
@@ -385,22 +234,17 @@ namespace AstralDiaryApi.Services.Implementations
                 .Select(e => new GetEntryResponse
                 {
                     Id = e.EntityId,
+                    DocuType = DocuType.Entry,
                     Date = e.Date,
-                    Title = e.Title,
-                    Content = e.Content,
                     Mood = e.Mood,
-                    Attachments = e
-                        .Attachments.Where(a => a.InternalFileName != null)
-                        .Select(a => new AttachmentObjResponse
-                        {
-                            FilePath = a.FilePath,
-                            ThumbnailPath = a.ThumbnailPath,
-                            InternalFileName = a.InternalFileName,
-                            OriginalFileName = a.OriginalFileName,
-                        })
-                        .ToList(),
+                    EncryptedContent = e.EncryptedContent,
+                    ContentIv = e.ContentIv,
+                    ContentSalt = e.ContentSalt,
+                    AttachmentId = e.AttachmentId,
+                    AttachmentHash = e.AttachmentHash,
                     CreatedAt = e.CreatedAt,
                     ModifiedAt = e.ModifiedAt,
+                    PublishedAt = e.PublishedAt,
                 })
                 .ToListAsync();
 
@@ -424,7 +268,7 @@ namespace AstralDiaryApi.Services.Implementations
             var firstEntry = await GetFirstEntryAsync(userId);
             var latestEntry = await GetLatestEntryAsync(userId);
 
-            var response = new GetUserInfoResponse
+            return new GetUserInfoResponse
             {
                 Email = userInitialDetailsDto.Email,
                 DisplayName = userInitialDetailsDto.DisplayName,
@@ -436,8 +280,6 @@ namespace AstralDiaryApi.Services.Implementations
                 LatestEntryDate = latestEntry?.Date,
                 CurrentStreak = currentStreak,
             };
-
-            return response;
         }
 
         private async Task<int> GetEntriesCountAsync(Guid userId)
@@ -447,24 +289,20 @@ namespace AstralDiaryApi.Services.Implementations
 
         private async Task<Entry?> GetFirstEntryAsync(Guid userId)
         {
-            var entry = await _dbContext
+            return await _dbContext
                 .Entries.AsNoTracking()
                 .OrderBy(e => e.Date)
                 .ThenBy(e => e.ModifiedAt)
                 .FirstOrDefaultAsync(e => e.UserId == userId);
-
-            return entry;
         }
 
         private async Task<Entry?> GetLatestEntryAsync(Guid userId)
         {
-            var entry = await _dbContext
+            return await _dbContext
                 .Entries.AsNoTracking()
                 .OrderByDescending(e => e.Date)
                 .ThenByDescending(e => e.ModifiedAt)
                 .FirstOrDefaultAsync(e => e.UserId == userId);
-
-            return entry;
         }
 
         private async Task<int> GetCurrentStreakAsync(Guid userId, DateOnly currentUserDate)
@@ -506,13 +344,68 @@ namespace AstralDiaryApi.Services.Implementations
             return streak;
         }
 
-        public async Task<List<UserMoodMap>> GetUserMoodMapAsync(Guid userId)
+        public async Task<List<UserMoodMap>> GetUserMoodMapAsync(Guid userId, int year)
         {
             return await _dbContext
                 .Entries.AsNoTracking()
-                .Where(e => e.UserId == userId)
+                .Where(e => e.UserId == userId && e.Date.Year == year)
                 .Select(e => new UserMoodMap { Date = e.Date, Mood = e.Mood })
                 .ToListAsync();
+        }
+
+        public async Task<List<GetEntryResponse>> GetDeletedEntries(Guid userId)
+        {
+            return await _dbContext
+                .Entries.AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(e => e.UserId == userId && e.IsDeleted == true && e.DeletedAt != null)
+                .OrderByDescending(e => e.DeletedAt)
+                .ThenByDescending(e => e.Date)
+                .ThenByDescending(e => e.ModifiedAt)
+                .Select(e => new GetEntryResponse
+                {
+                    Id = e.EntityId,
+                    DocuType = DocuType.Entry,
+                    Date = e.Date,
+                    Mood = e.Mood,
+                    EncryptedContent = e.EncryptedContent,
+                    ContentIv = e.ContentIv,
+                    ContentSalt = e.ContentSalt,
+                    AttachmentId = e.AttachmentId,
+                    AttachmentHash = e.AttachmentHash,
+                    CreatedAt = e.CreatedAt,
+                    ModifiedAt = e.ModifiedAt,
+                    DeletedAt = e.DeletedAt,
+                    PublishedAt = e.PublishedAt,
+                })
+                .ToListAsync();
+        }
+
+        public async Task<bool> RestoreEntries(Guid userId, string[] entryIds)
+        {
+            var entries = await _dbContext
+                .Entries.IgnoreQueryFilters()
+                .Where(e =>
+                    e.UserId == userId
+                    && entryIds.Contains(e.EntityId)
+                    && e.IsDeleted == true
+                    && e.DeletedAt != null
+                )
+                .ToListAsync();
+
+            if (entries.Count == 0)
+                throw new NotFoundException("No Entries found");
+
+            foreach (var entryId in entries)
+            {
+                entryId.IsDeleted = false;
+                entryId.DeletedAt = null;
+                entryId.ModifiedAt = DateTime.UtcNow;
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            return true;
         }
     }
 }

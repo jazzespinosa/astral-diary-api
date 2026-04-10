@@ -2,18 +2,9 @@
 
 namespace AstralDiaryApi.Models.DTOs.Entries.Update
 {
-    public class UpdateEntryRequestRaw : BaseRequestDto<IFormFile>
+    public class UpdateEntryRequest : BaseRequestDto
     {
         public required string Id { get; set; }
-        public override required string Title { get; set; }
-        public override required string Content { get; set; }
-    }
-
-    public class UpdateEntryRequestProcessed : BaseRequestDto<AttachmentObjRequest>
-    {
-        public required string Id { get; set; }
-        public override required string Title { get; set; }
-        public override required string Content { get; set; }
     }
 
     public class UpdateEntryResponse : BaseResponseDto
@@ -23,15 +14,9 @@ namespace AstralDiaryApi.Models.DTOs.Entries.Update
             get => Id;
             set => Id = value;
         }
-        public override required string Title { get; set; }
     }
 
-    public class UpdateDraftRequestRaw : BaseRequestDto<IFormFile>
-    {
-        public required string Id { get; set; }
-    }
-
-    public class UpdateDraftRequestProcessed : BaseRequestDto<AttachmentObjRequest>
+    public class UpdateDraftRequest : BaseRequestDto
     {
         public required string Id { get; set; }
     }

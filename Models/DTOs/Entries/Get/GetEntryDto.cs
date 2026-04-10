@@ -7,14 +7,18 @@ namespace AstralDiaryApi.Models.DTOs.Entries.Get
         public required string EntryId { get; set; }
     }
 
-    public class GetEntryResponse : BaseGetResponse
+    public class GetEntryResponse : GetResponse
     {
         public string EntryId
         {
             get => Id;
             set => Id = value;
         }
-        public override required string Title { get; set; }
-        public override required string Content { get; set; }
+    }
+
+    public class GetEntryIdResponse
+    {
+        public int Id { get; set; }
+        public required string EntryId { get; set; }
     }
 }
