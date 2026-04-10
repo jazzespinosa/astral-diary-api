@@ -1,10 +1,7 @@
-﻿using System.Net.NetworkInformation;
-using AstralDiaryApi.Common.Generics;
+﻿using AstralDiaryApi.Common.Generics;
 using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Data;
 using AstralDiaryApi.Exceptions;
-using AstralDiaryApi.Models.DTOs;
-using AstralDiaryApi.Models.DTOs.Entries.Delete;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;

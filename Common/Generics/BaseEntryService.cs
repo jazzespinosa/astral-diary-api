@@ -1,17 +1,7 @@
-﻿using System.CodeDom;
-using System.Net;
-using System.Net.Mail;
-using System.Text.Json;
+﻿using System.Text.Json;
 using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Data;
 using AstralDiaryApi.Exceptions;
-using AstralDiaryApi.Models.DTOs;
-using AstralDiaryApi.Models.DTOs.Attachments;
-using AstralDiaryApi.Models.DTOs.Entries.Get;
-using AstralDiaryApi.Models.DTOs.Entries.New;
-using AstralDiaryApi.Models.DTOs.Entries.Update;
-using AstralDiaryApi.Models.Entities;
-using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

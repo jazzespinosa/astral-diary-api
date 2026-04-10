@@ -20,7 +20,6 @@ FirebaseApp.Create(
 );
 
 // Get connection string from config then add db context
-//var connectionString = builder.Configuration["ConnectionString:DefaultConnection"];
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {

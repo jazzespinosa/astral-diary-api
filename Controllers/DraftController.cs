@@ -1,9 +1,6 @@
 ﻿using AstralDiaryApi.Common.Helpers;
-using AstralDiaryApi.Common.Interfaces;
-using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
-using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

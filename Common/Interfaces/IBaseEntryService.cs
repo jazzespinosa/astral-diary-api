@@ -1,7 +1,4 @@
-﻿using AstralDiaryApi.Models.DTOs.Entries.Get;
-using AstralDiaryApi.Models.DTOs.Entries.New;
-
-namespace AstralDiaryApi.Common.Interfaces
+﻿namespace AstralDiaryApi.Common.Interfaces
 {
     public interface IBaseEntryService<
         TEntity,

@@ -1,5 +1,4 @@
 ﻿using AstralDiaryApi.Common.Interfaces;
-using AstralDiaryApi.Models.DTOs;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;

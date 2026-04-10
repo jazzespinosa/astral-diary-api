@@ -1,14 +1,10 @@
-﻿using System.Net;
-using AstralDiaryApi.Common.Helpers;
-using AstralDiaryApi.Common.Interfaces;
+﻿using AstralDiaryApi.Common.Helpers;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using static Google.Apis.Requests.BatchRequest;
 
 namespace AstralDiaryApi.Controllers
 {
