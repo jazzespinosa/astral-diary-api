@@ -40,12 +40,6 @@ jobs:
       - name: Add known hosts
         run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Debug - Check current user
-        run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "whoami"
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "id"
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "pwd"
-
       - name: Deploy to OCI Server
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl stop astral-diary-api.service"
