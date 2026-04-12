@@ -63,4 +63,4 @@ jobs:
       - name: Health check
         run: |
           sleep 5
-          curl -f http://${{ secrets.SSH_HOST }}:5000/health || exit 1
+          curl -f http://${{ secrets.SSH_HOST }}:5000/utility/online || exit 1

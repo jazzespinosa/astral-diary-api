@@ -211,22 +211,6 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 app.UseAuthorization();
-
-// Health check
-app.MapGet(
-        "/health",
-        () =>
-            Results.Ok(
-                new
-                {
-                    status = "healthy",
-                    timestamp = DateTime.UtcNow,
-                    environment = app.Environment.EnvironmentName,
-                }
-            )
-    )
-    .AllowAnonymous();
-
 app.MapControllers();
 app.Run();
 
