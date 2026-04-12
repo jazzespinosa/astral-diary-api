@@ -5,6 +5,8 @@
 
 /bin
 /obj
+/publish
 
 /wwwroot
 /Storage
+/appsettings.Production.json
