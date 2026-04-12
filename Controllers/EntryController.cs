@@ -1,4 +1,5 @@
-﻿using AstralDiaryApi.Common.Helpers;
+﻿using AstralDiaryApi.Common.Generics;
+using AstralDiaryApi.Common.Helpers;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
@@ -10,15 +11,14 @@ namespace AstralDiaryApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class EntryController : ControllerBase
+    public class EntryController : BaseAppController
     {
         private readonly IEntryService _entryService;
-        private readonly IUserService _userService;
 
         public EntryController(IEntryService entryService, IUserService userService)
+            : base(userService)
         {
             _entryService = entryService;
-            _userService = userService;
         }
 
         [HttpPost("create")]
@@ -65,8 +65,7 @@ namespace AstralDiaryApi.Controllers
         )
         {
             var userId = await GetUserId();
-            if (getSearchEntriesRequest.PageSize > 100)
-                getSearchEntriesRequest.PageSize = 100;
+
             var response = await _entryService.SearchAsync(userId, getSearchEntriesRequest);
 
             return Ok(response);
@@ -145,12 +144,6 @@ namespace AstralDiaryApi.Controllers
             var response = await _entryService.RestoreEntries(userId, entryIds);
 
             return Ok(new { result = response, message = "Entries restored successfully." });
-        }
-
-        private async Task<Guid> GetUserId()
-        {
-            var firebaseUid = User.FindFirst("user_id")?.Value ?? string.Empty;
-            return await _userService.GetUserId(firebaseUid);
         }
     }
 }

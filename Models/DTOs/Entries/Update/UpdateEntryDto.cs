@@ -2,12 +2,12 @@
 
 namespace AstralDiaryApi.Models.DTOs.Entries.Update
 {
-    public class UpdateEntryRequest : BaseRequestDto
+    public class UpdateEntryRequest : BaseRequestDto, IUpdateRequest
     {
         public required string Id { get; set; }
     }
 
-    public class UpdateEntryResponse : BaseResponseDto
+    public class UpdateEntryResponse : BaseResponseDto, IUpdateResponse
     {
         public string EntryId
         {
@@ -16,12 +16,12 @@ namespace AstralDiaryApi.Models.DTOs.Entries.Update
         }
     }
 
-    public class UpdateDraftRequest : BaseRequestDto
+    public class UpdateDraftRequest : BaseRequestDto, IUpdateRequest
     {
         public required string Id { get; set; }
     }
 
-    public class UpdateDraftResponse : BaseResponseDto
+    public class UpdateDraftResponse : BaseResponseDto, IUpdateResponse
     {
         public string DraftId
         {

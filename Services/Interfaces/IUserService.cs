@@ -1,6 +1,4 @@
 ﻿using AstralDiaryApi.Models.DTOs.Users;
-using AstralDiaryApi.Models.Entities;
-using FirebaseAdmin.Auth;
 
 namespace AstralDiaryApi.Services.Interfaces
 {

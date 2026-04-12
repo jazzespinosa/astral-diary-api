@@ -1,16 +1,9 @@
 ﻿namespace AstralDiaryApi.Common.Interfaces
 {
-    public interface IBaseEntryService<
-        TEntity,
-        TNewRequest,
-        TNewResponse,
-        TGetResponse,
-        TUpdateRequest,
-        TUpdateResponse
-    >
+    public interface IBaseEntryService<TEntity>
     {
-        Task<TNewResponse> Create(Guid userId, TNewRequest newRequest);
-        Task<TGetResponse> Get(Guid userId, string entityId);
-        Task<TUpdateResponse> Update(Guid userId, TUpdateRequest updateRequest);
+        Task<IResponseDto> Create(Guid userId, IRequestDto newRequest);
+        Task<IGetResponse> Get(Guid userId, string entityId);
+        Task<IUpdateResponse> Update(Guid userId, IUpdateRequest updateRequest);
     }
 }

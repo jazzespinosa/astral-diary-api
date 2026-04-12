@@ -1,11 +1,7 @@
-﻿using System.Drawing;
-using AstralDiaryApi.Common.Generics;
-using AstralDiaryApi.Common.Interfaces;
+﻿using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Data;
 using AstralDiaryApi.Exceptions;
 using AstralDiaryApi.Models.DTOs.Attachments;
-using AstralDiaryApi.Models.DTOs.Entries.Delete;
-using AstralDiaryApi.Models.Entities;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

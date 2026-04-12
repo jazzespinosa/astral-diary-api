@@ -1,4 +1,5 @@
-﻿using AstralDiaryApi.Common.Helpers;
+﻿using AstralDiaryApi.Common.Generics;
+using AstralDiaryApi.Common.Helpers;
 using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Services.Interfaces;
@@ -9,15 +10,14 @@ namespace AstralDiaryApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class DraftController : ControllerBase
+    public class DraftController : BaseAppController
     {
         private readonly IDraftService _draftService;
-        private readonly IUserService _userService;
 
         public DraftController(IDraftService draftService, IUserService userService)
+            : base(userService)
         {
             _draftService = draftService;
-            _userService = userService;
         }
 
         [HttpPost("create")]
@@ -112,12 +112,6 @@ namespace AstralDiaryApi.Controllers
                 return StatusCode(StatusCodes.Status204NoContent);
 
             return StatusCode(StatusCodes.Status500InternalServerError);
-        }
-
-        private async Task<Guid> GetUserId()
-        {
-            var firebaseUid = User.FindFirst("user_id")?.Value ?? string.Empty;
-            return await _userService.GetUserId(firebaseUid);
         }
     }
 }

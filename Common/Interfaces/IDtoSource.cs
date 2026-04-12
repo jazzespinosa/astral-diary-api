@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-
-namespace AstralDiaryApi.Common.Interfaces
+﻿namespace AstralDiaryApi.Common.Interfaces
 {
     public interface IRequestDto
     {

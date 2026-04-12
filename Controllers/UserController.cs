@@ -1,6 +1,5 @@
-﻿using AstralDiaryApi.Data;
+﻿using AstralDiaryApi.Common.Generics;
 using AstralDiaryApi.Models.DTOs.Users;
-using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,14 +8,13 @@ namespace AstralDiaryApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserController : ControllerBase
+    public class UserController : BaseAppController
     {
-        private readonly IUserService _userService;
         private readonly IEntryService _entryService;
 
         public UserController(IUserService userService, IEntryService entryService)
+            : base(userService)
         {
-            _userService = userService;
             _entryService = entryService;
         }
 
@@ -79,11 +77,5 @@ namespace AstralDiaryApi.Controllers
         private bool IsEmailVerified() => User.FindFirst("email_verified")?.Value == "true";
 
         private string GetFirebaseUid() => User.FindFirst("user_id")?.Value ?? string.Empty;
-
-        private async Task<Guid> GetUserId()
-        {
-            var firebaseUid = GetFirebaseUid();
-            return await _userService.GetUserId(firebaseUid);
-        }
     }
 }

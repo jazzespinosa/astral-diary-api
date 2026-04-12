@@ -1,28 +1,24 @@
-﻿using System.Net.Mail;
+﻿using AstralDiaryApi.Common.Generics;
 using AstralDiaryApi.Models.DTOs.Attachments;
 using AstralDiaryApi.Models.Entities;
-using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.StaticFiles;
 
 namespace AstralDiaryApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AttachmentController : ControllerBase
+    public class AttachmentController : BaseAppController
     {
         private readonly IFileStorageService _fileStorageService;
-        private readonly IUserService _userService;
 
         public AttachmentController(
             IFileStorageService fileStorageService,
             IUserService userService
         )
+            : base(userService)
         {
             _fileStorageService = fileStorageService;
-            _userService = userService;
         }
 
         [HttpGet("get/{entityId}/{attachmentType}/{attachmentId}")]
@@ -61,12 +57,6 @@ namespace AstralDiaryApi.Controllers
                 "application/octet-stream",
                 fileDownloadResult.FileName
             );
-        }
-
-        private async Task<Guid> GetUserId()
-        {
-            var firebaseUid = User.FindFirst("user_id")?.Value ?? string.Empty;
-            return await _userService.GetUserId(firebaseUid);
         }
     }
 }

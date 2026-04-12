@@ -1,21 +1,33 @@
-﻿namespace AstralDiaryApi.Models.DTOs.Entries.Get
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace AstralDiaryApi.Models.DTOs.Entries.Get
 {
     public class GetSearchEntryRequest
     {
-        public string DateFilter { get; set; } = "any";
+        public required DateTypeFilter DateFilter { get; set; } = DateTypeFilter.any;
         public DateOnly? Date { get; set; }
+
+        [Range(0, 5, ErrorMessage = "Mood must be between 0 and 5")]
         public int? Mood { get; set; }
-        public string Sort { get; set; } = "desc";
-        public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 20;
+        public required SortType Sort { get; set; } = SortType.desc;
     }
 
-    public class PagedResult<T>
+    public class PagedResult
     {
-        public List<T> Items { get; set; } = new();
-        public int TotalCount { get; set; }
-        public int Page { get; set; }
-        public int PageSize { get; set; }
-        public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+        public List<GetEntryResponse> Items { get; set; } = new();
+    }
+
+    public enum DateTypeFilter
+    {
+        any,
+        exact,
+        before,
+        after,
+    }
+
+    public enum SortType
+    {
+        asc,
+        desc,
     }
 }

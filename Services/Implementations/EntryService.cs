@@ -13,24 +13,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AstralDiaryApi.Services.Implementations
 {
-    public class EntryService
-        : BaseEntryService<
-            Entry,
-            NewEntryRequest,
-            NewEntryResponse,
-            GetEntryResponse,
-            UpdateEntryRequest,
-            UpdateEntryResponse
-        >,
-            IEntryService
+    public class EntryService : BaseEntryService<Entry>, IEntryService
     {
         public EntryService(AppDbContext dbContext, IFileStorageService fileStorageService)
             : base(dbContext, fileStorageService) { }
 
-        public override async Task<NewEntryResponse> Create(
-            Guid userId,
-            NewEntryRequest newEntryRequest
-        )
+        public override async Task<IResponseDto> Create(Guid userId, IRequestDto newEntryRequest)
         {
             var entry = new Entry
             {
@@ -51,34 +39,19 @@ namespace AstralDiaryApi.Services.Implementations
             return new NewEntryResponse { Id = entry.EntityId };
         }
 
-        public override async Task<GetEntryResponse> Get(Guid userId, string entryId)
+        public override async Task<IGetResponse> Get(Guid userId, string entryId)
         {
             var entry = await FindByIdAsync(userId, entryId, DocuType.Entry);
 
             if (entry == null)
                 throw new NotFoundException("Entry not found");
 
-            return new GetEntryResponse
-            {
-                Id = entry.Id,
-                DocuType = entry.DocuType,
-                Date = entry.Date,
-                Mood = entry.Mood,
-                EncryptedContent = entry.EncryptedContent,
-                ContentIv = entry.ContentIv,
-                ContentSalt = entry.ContentSalt,
-                AttachmentId = entry.AttachmentId,
-                AttachmentHash = entry.AttachmentHash,
-                CreatedAt = entry.CreatedAt,
-                ModifiedAt = entry.ModifiedAt,
-                DeletedAt = entry.DeletedAt,
-                PublishedAt = entry.PublishedAt,
-            };
+            return entry;
         }
 
-        public override async Task<UpdateEntryResponse> Update(
+        public override async Task<IUpdateResponse> Update(
             Guid userId,
-            UpdateEntryRequest updateEntryRequest
+            IUpdateRequest updateEntryRequest
         )
         {
             var entryId = updateEntryRequest.Id;
@@ -140,29 +113,14 @@ namespace AstralDiaryApi.Services.Implementations
 
         public async Task<List<GetEntryResponse>> GetCalendarEntries(Guid userId, DateOnly date)
         {
+            var startDate = date.AddMonths(-1);
+            var endDate = date.AddMonths(1).AddDays(-1);
+
             return await _dbContext
                 .Entries.AsNoTracking()
-                .Where(e =>
-                    e.UserId == userId
-                    && e.Date.Month >= date.Month - 1
-                    && e.Date.Month <= date.Month + 1
-                )
+                .Where(e => e.UserId == userId && e.Date >= startDate && e.Date <= endDate)
                 .OrderByDescending(e => e.Date)
-                .Select(e => new GetEntryResponse
-                {
-                    Id = e.EntityId,
-                    DocuType = DocuType.Entry,
-                    Date = e.Date,
-                    Mood = e.Mood,
-                    EncryptedContent = e.EncryptedContent,
-                    ContentIv = e.ContentIv,
-                    ContentSalt = e.ContentSalt,
-                    AttachmentId = e.AttachmentId,
-                    AttachmentHash = e.AttachmentHash,
-                    CreatedAt = e.CreatedAt,
-                    ModifiedAt = e.ModifiedAt,
-                    PublishedAt = e.PublishedAt,
-                })
+                .Select(GetEntryProjection())
                 .ToListAsync();
         }
 
@@ -173,26 +131,12 @@ namespace AstralDiaryApi.Services.Implementations
                 .Where(e => e.UserId == userId)
                 .OrderByDescending(e => e.Date)
                 .ThenByDescending(e => e.ModifiedAt)
-                .Select(e => new GetEntryResponse
-                {
-                    Id = e.EntityId,
-                    DocuType = DocuType.Entry,
-                    Date = e.Date,
-                    Mood = e.Mood,
-                    EncryptedContent = e.EncryptedContent,
-                    ContentIv = e.ContentIv,
-                    ContentSalt = e.ContentSalt,
-                    AttachmentId = e.AttachmentId,
-                    AttachmentHash = e.AttachmentHash,
-                    CreatedAt = e.CreatedAt,
-                    ModifiedAt = e.ModifiedAt,
-                    PublishedAt = e.PublishedAt,
-                })
+                .Select(GetEntryProjection())
                 .Take(limit)
                 .ToListAsync();
         }
 
-        public async Task<PagedResult<GetEntryResponse>> SearchAsync(
+        public async Task<PagedResult> SearchAsync(
             Guid userId,
             GetSearchEntryRequest getSearchEntriesRequest
         )
@@ -201,17 +145,17 @@ namespace AstralDiaryApi.Services.Implementations
 
             if (
                 getSearchEntriesRequest.DateFilter != null
-                && getSearchEntriesRequest.DateFilter?.ToLower() != "any"
+                && getSearchEntriesRequest.DateFilter != DateTypeFilter.any
                 && getSearchEntriesRequest.Date != null
             )
             {
                 var dateValue = getSearchEntriesRequest.Date;
 
-                query = getSearchEntriesRequest.DateFilter?.ToLower() switch
+                query = getSearchEntriesRequest.DateFilter switch
                 {
-                    "exact" => query.Where(e => e.Date == dateValue),
-                    "before" => query.Where(e => e.Date < dateValue),
-                    "after" => query.Where(e => e.Date > dateValue),
+                    DateTypeFilter.exact => query.Where(e => e.Date == dateValue),
+                    DateTypeFilter.before => query.Where(e => e.Date < dateValue),
+                    DateTypeFilter.after => query.Where(e => e.Date > dateValue),
                     _ => query,
                 };
             }
@@ -221,40 +165,14 @@ namespace AstralDiaryApi.Services.Implementations
                 query = query.Where(e => e.Mood == getSearchEntriesRequest.Mood);
             }
 
-            var totalCount = await query.CountAsync();
-
             query =
-                getSearchEntriesRequest.Sort?.ToLower() == "asc"
+                getSearchEntriesRequest.Sort == SortType.asc
                     ? query.OrderBy(e => e.Date).ThenBy(e => e.ModifiedAt)
                     : query.OrderByDescending(e => e.Date).ThenByDescending(e => e.ModifiedAt);
 
-            var items = await query
-                .Skip((getSearchEntriesRequest.Page - 1) * getSearchEntriesRequest.PageSize)
-                .Take(getSearchEntriesRequest.PageSize)
-                .Select(e => new GetEntryResponse
-                {
-                    Id = e.EntityId,
-                    DocuType = DocuType.Entry,
-                    Date = e.Date,
-                    Mood = e.Mood,
-                    EncryptedContent = e.EncryptedContent,
-                    ContentIv = e.ContentIv,
-                    ContentSalt = e.ContentSalt,
-                    AttachmentId = e.AttachmentId,
-                    AttachmentHash = e.AttachmentHash,
-                    CreatedAt = e.CreatedAt,
-                    ModifiedAt = e.ModifiedAt,
-                    PublishedAt = e.PublishedAt,
-                })
-                .ToListAsync();
+            var items = await query.Select(GetEntryProjection()).ToListAsync();
 
-            return new PagedResult<GetEntryResponse>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                Page = getSearchEntriesRequest.Page,
-                PageSize = getSearchEntriesRequest.PageSize,
-            };
+            return new PagedResult { Items = items };
         }
 
         public async Task<GetUserInfoResponse> GetUserStatsAsync(
@@ -362,22 +280,7 @@ namespace AstralDiaryApi.Services.Implementations
                 .OrderByDescending(e => e.DeletedAt)
                 .ThenByDescending(e => e.Date)
                 .ThenByDescending(e => e.ModifiedAt)
-                .Select(e => new GetEntryResponse
-                {
-                    Id = e.EntityId,
-                    DocuType = DocuType.Entry,
-                    Date = e.Date,
-                    Mood = e.Mood,
-                    EncryptedContent = e.EncryptedContent,
-                    ContentIv = e.ContentIv,
-                    ContentSalt = e.ContentSalt,
-                    AttachmentId = e.AttachmentId,
-                    AttachmentHash = e.AttachmentHash,
-                    CreatedAt = e.CreatedAt,
-                    ModifiedAt = e.ModifiedAt,
-                    DeletedAt = e.DeletedAt,
-                    PublishedAt = e.PublishedAt,
-                })
+                .Select(GetEntryProjection())
                 .ToListAsync();
         }
 

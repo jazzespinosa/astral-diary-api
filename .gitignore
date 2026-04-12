@@ -3,9 +3,11 @@
 
 .vs/
 
-/bin
-/obj
-/publish
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
 
 /wwwroot
 /Storage

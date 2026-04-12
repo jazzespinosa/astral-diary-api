@@ -1,6 +1,5 @@
 ﻿using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Models.DTOs.Attachments;
-using AstralDiaryApi.Models.DTOs.Entries.Delete;
 
 namespace AstralDiaryApi.Services.Interfaces
 {

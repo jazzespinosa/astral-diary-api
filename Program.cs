@@ -1,3 +1,4 @@
+using System.Text;
 using AstralDiaryApi.Data;
 using AstralDiaryApi.env;
 using AstralDiaryApi.Services.Implementations;
@@ -7,25 +8,108 @@ using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Oci.Common.Auth;
+using Oci.SecretsService;
+using Oci.SecretsService.Requests;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Firebase Admin SDK Initialization
-FirebaseApp.Create(
-    new AppOptions()
-    {
-        Credential = GoogleCredential.GetApplicationDefault(),
-        ProjectId = "astral-diary",
-    }
-);
-
-// Get connection string from config then add db context
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(connectionString))
+if (builder.Environment.IsProduction())
 {
-    throw new InvalidOperationException("Connection string is not set.");
+    var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Program>();
+
+    try
+    {
+        logger.LogInformation("Loading secrets from OCI Vault...");
+
+        var ociRegion = builder.Configuration["OCI:Region"] ?? "ap-singapore-1";
+        var connectionStringSecretId = builder.Configuration["OCI:ConnectionStringSecretId"];
+        var googleAdcSecretId = builder.Configuration["OCI:GoogleAdcSecretId"];
+        var pepperSecretId = builder.Configuration["OCI:PepperSecretId"];
+        var configSecretId = builder.Configuration["OCI:ConfigSecretId"];
+
+        if (
+            string.IsNullOrEmpty(connectionStringSecretId)
+            || string.IsNullOrEmpty(googleAdcSecretId)
+            || string.IsNullOrEmpty(pepperSecretId)
+            || string.IsNullOrEmpty(configSecretId)
+        )
+        {
+            throw new InvalidOperationException("OCI Secret IDs are not properly configured!");
+        }
+
+        var provider = new InstancePrincipalsAuthenticationDetailsProvider();
+        using var secretsClient = new SecretsClient(provider);
+        secretsClient.SetRegion(ociRegion);
+
+        logger.LogInformation("Fetching connection string from OCI...");
+        var connString = await GetSecretValueAsync(secretsClient, connectionStringSecretId, logger);
+
+        logger.LogInformation("Fetching Google ADC from OCI...");
+        var googleAdcJson = await GetSecretValueAsync(secretsClient, googleAdcSecretId, logger);
+
+        logger.LogInformation("Fetching pepper secret from OCI...");
+        var pepperSecret = await GetSecretValueAsync(secretsClient, pepperSecretId, logger);
+
+        logger.LogInformation("Fetching pepper secret from OCI...");
+        var configSecretJson = await GetSecretValueAsync(secretsClient, configSecretId, logger);
+
+        var secretsConfig = new Dictionary<string, string>
+        {
+            ["ConnectionStrings:DefaultConnection"] = connString,
+            ["Crypto:ServerPepperSecret"] = pepperSecret,
+            ["GoogleAdcJson"] = googleAdcJson,
+        };
+
+        builder.Configuration.AddInMemoryCollection(secretsConfig!);
+
+        using var configStream = new MemoryStream(Encoding.UTF8.GetBytes(configSecretJson));
+        builder.Configuration.AddJsonStream(configStream);
+
+        logger.LogInformation("All secrets loaded successfully from OCI Vault.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "FATAL: Failed to load secrets from OCI Vault");
+        throw;
+    }
 }
+
+if (builder.Environment.IsProduction())
+{
+    var googleAdcJson = builder.Configuration["GoogleAdcJson"];
+    if (!string.IsNullOrEmpty(googleAdcJson))
+    {
+        FirebaseApp.Create(
+            new AppOptions()
+            {
+                Credential = CredentialFactory
+                    .FromJson<ServiceAccountCredential>(googleAdcJson)
+                    .ToGoogleCredential(),
+            }
+        );
+    }
+}
+else
+{
+    FirebaseApp.Create(
+        new AppOptions()
+        {
+            Credential = GoogleCredential.GetApplicationDefault(),
+            ProjectId = "astral-diary",
+        }
+    );
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    var connectionString = builder.Configuration["ConnectionStrings:DefaultConnection"];
+
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Connection string is not set.");
+    }
+
     options.UseMySql(
         connectionString,
         ServerVersion.AutoDetect(connectionString),
@@ -37,16 +121,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
                 errorNumbersToAdd: null
             );
         }
-    )
-);
+    );
+});
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEntryService, EntryService>();
 builder.Services.AddScoped<IDraftService, DraftService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
-
-builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IUtilityService, UtilityService>();
 
 // Environment
 builder.Services.AddSingleton<MyEnvironment>();
@@ -59,9 +142,12 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        //policy.WithOrigins(["https://astral-diary.web.app", "https://astral-diary.firebaseapp.com"])
-        //      .AllowAnyHeader()
-        //      .AllowAnyMethod();
+        policy
+            .WithOrigins(["https://astral-diary.web.app", "https://astral-diary.firebaseapp.com"])
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .WithExposedHeaders("Location");
+        ;
     });
     options.AddPolicy(
         "AllowDevelopmentOrigins",
@@ -78,7 +164,7 @@ builder.Services.AddCors(options =>
 });
 
 // Swagger
-//builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // JWT Authentication for Firebase
@@ -107,8 +193,6 @@ builder.Services.Configure<RouteOptions>(options =>
 // Build
 var app = builder.Build();
 
-app.UseStaticFiles();
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -129,3 +213,26 @@ app.UseAuthorization();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+// Helper method
+async Task<string> GetSecretValueAsync(SecretsClient client, string secretId, ILogger logger)
+{
+    try
+    {
+        var request = new GetSecretBundleRequest { SecretId = secretId };
+        var response = await client.GetSecretBundle(request);
+
+        var base64Content = (
+            (Oci.SecretsService.Models.Base64SecretBundleContentDetails)
+                response.SecretBundle.SecretBundleContent
+        ).Content;
+
+        var bytes = Convert.FromBase64String(base64Content);
+        return Encoding.UTF8.GetString(bytes);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to fetch secret: {SecretId}", secretId);
+        throw;
+    }
+}

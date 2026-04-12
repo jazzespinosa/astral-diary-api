@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using AstralDiaryApi.Services.Implementations;
+using AstralDiaryApi.Common.Generics;
+using AstralDiaryApi.env;
 using AstralDiaryApi.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,18 +10,17 @@ namespace AstralDiaryApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class CryptoController : ControllerBase
+    public class CryptoController : BaseAppController
     {
-        private readonly IConfiguration _configuration;
-        private readonly IUserService _userService;
+        private readonly MyEnvironment _env;
 
-        public CryptoController(IConfiguration configuration, IUserService userService)
+        public CryptoController(IUserService userService, MyEnvironment env)
+            : base(userService)
         {
-            _configuration = configuration;
-            _userService = userService;
+            _env = env;
         }
 
-        private string ServerSecret => _configuration["Crypto:ServerPepperSecret"]!;
+        private string ServerSecret => _env.ServerSecret;
 
         [HttpGet("pepper")]
         [Authorize]
@@ -38,12 +38,6 @@ namespace AstralDiaryApi.Controllers
             var pepper = Convert.ToBase64String(pepperBytes);
 
             return Ok(new { pepper });
-        }
-
-        private async Task<Guid> GetUserId()
-        {
-            var firebaseUid = User.FindFirst("user_id")?.Value ?? string.Empty;
-            return await _userService.GetUserId(firebaseUid);
         }
     }
 }

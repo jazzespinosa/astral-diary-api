@@ -8,5 +8,13 @@
         {
             _config = config;
         }
+
+        public string FirestoreDatabaseId => _config["FirestoreDatabaseId"];
+
+        public string FeedbackEmailRecipient => _config["FeedbackEmailRecipient"];
+
+        public string CloudFirestoreDbLink => _config["CloudFirestoreDbLink"];
+
+        public string ServerSecret => _config["Crypto:ServerPepperSecret"];
     }
 }

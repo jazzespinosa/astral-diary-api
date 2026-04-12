@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -17,7 +16,8 @@ namespace AstralDiaryApi.Migrations
                 type: "date",
                 nullable: false,
                 oldClrType: typeof(DateTime),
-                oldType: "timestamp");
+                oldType: "timestamp"
+            );
 
             migrationBuilder.AlterColumn<DateOnly>(
                 name: "date",
@@ -25,7 +25,8 @@ namespace AstralDiaryApi.Migrations
                 type: "date",
                 nullable: false,
                 oldClrType: typeof(DateTime),
-                oldType: "timestamp");
+                oldType: "timestamp"
+            );
         }
 
         /// <inheritdoc />
@@ -37,7 +38,8 @@ namespace AstralDiaryApi.Migrations
                 type: "timestamp",
                 nullable: false,
                 oldClrType: typeof(DateOnly),
-                oldType: "date");
+                oldType: "date"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "date",
@@ -45,7 +47,8 @@ namespace AstralDiaryApi.Migrations
                 type: "timestamp",
                 nullable: false,
                 oldClrType: typeof(DateOnly),
-                oldType: "date");
+                oldType: "date"
+            );
         }
     }
 }

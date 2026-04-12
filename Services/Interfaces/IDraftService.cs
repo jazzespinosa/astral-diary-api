@@ -1,20 +1,11 @@
 ﻿using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
-using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Models.Entities;
 
 namespace AstralDiaryApi.Services.Interfaces
 {
-    public interface IDraftService
-        : IBaseEntryService<
-            Draft,
-            NewDraftRequest,
-            NewDraftResponse,
-            GetDraftResponse,
-            UpdateDraftRequest,
-            UpdateDraftResponse
-        >
+    public interface IDraftService : IBaseEntryService<Draft>
     {
         Task<List<GetDraftResponse>> GetAllDrafts(Guid userId);
         Task<GetDraftCountResponse> CountDraftsAsync(Guid userId);

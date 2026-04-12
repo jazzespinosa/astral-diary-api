@@ -11,16 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AstralDiaryApi.Services.Implementations
 {
-    public class DraftService
-        : BaseEntryService<
-            Draft,
-            NewDraftRequest,
-            NewDraftResponse,
-            GetDraftResponse,
-            UpdateDraftRequest,
-            UpdateDraftResponse
-        >,
-            IDraftService
+    public class DraftService : BaseEntryService<Draft>, IDraftService
     {
         private readonly IEntryService _entryService;
 
@@ -34,10 +25,7 @@ namespace AstralDiaryApi.Services.Implementations
             _entryService = entryService;
         }
 
-        public override async Task<NewDraftResponse> Create(
-            Guid userId,
-            NewDraftRequest newDraftRequest
-        )
+        public override async Task<IResponseDto> Create(Guid userId, IRequestDto newDraftRequest)
         {
             var count = await _dbContext.Drafts.CountAsync(d => d.UserId == userId);
 
@@ -65,32 +53,19 @@ namespace AstralDiaryApi.Services.Implementations
             return new NewDraftResponse { Id = draft.EntityId };
         }
 
-        public override async Task<GetDraftResponse> Get(Guid userId, string draftId)
+        public override async Task<IGetResponse> Get(Guid userId, string draftId)
         {
             var draft = await FindByIdAsync(userId, draftId, DocuType.Draft);
 
             if (draft == null)
                 throw new NotFoundException("Draft not found");
 
-            return new GetDraftResponse
-            {
-                Id = draft.Id,
-                DocuType = draft.DocuType,
-                Date = draft.Date,
-                Mood = draft.Mood,
-                EncryptedContent = draft.EncryptedContent,
-                ContentIv = draft.ContentIv,
-                ContentSalt = draft.ContentSalt,
-                AttachmentId = draft.AttachmentId,
-                AttachmentHash = draft.AttachmentHash,
-                CreatedAt = draft.CreatedAt,
-                ModifiedAt = draft.ModifiedAt,
-            };
+            return draft;
         }
 
-        public override async Task<UpdateDraftResponse> Update(
+        public override async Task<IUpdateResponse> Update(
             Guid userId,
-            UpdateDraftRequest updateDraftRequest
+            IUpdateRequest updateDraftRequest
         )
         {
             var draftId = updateDraftRequest.Id;
@@ -111,12 +86,6 @@ namespace AstralDiaryApi.Services.Implementations
             UpdateDraftRequest updateDraftRequest
         )
         {
-            var entryDate = updateDraftRequest.Date;
-            if (entryDate > DateOnly.FromDateTime(DateTime.UtcNow))
-            {
-                throw new ArgumentException("Entry date cannot be in the future.");
-            }
-
             var draftId = updateDraftRequest.Id;
             var draft = await _dbContext.Drafts.FirstOrDefaultAsync(d =>
                 d.UserId == userId && d.EntityId == updateDraftRequest.Id
@@ -168,22 +137,10 @@ namespace AstralDiaryApi.Services.Implementations
         public async Task<List<GetDraftResponse>> GetAllDrafts(Guid userId)
         {
             return await _dbContext
-                .Drafts.Where(d => d.UserId == userId)
+                .Drafts.AsNoTracking()
+                .Where(d => d.UserId == userId)
                 .OrderByDescending(d => d.ModifiedAt)
-                .Select(d => new GetDraftResponse
-                {
-                    Id = d.EntityId,
-                    DocuType = DocuType.Draft,
-                    Date = d.Date,
-                    Mood = d.Mood,
-                    EncryptedContent = d.EncryptedContent,
-                    ContentIv = d.ContentIv,
-                    ContentSalt = d.ContentSalt,
-                    AttachmentId = d.AttachmentId,
-                    AttachmentHash = d.AttachmentHash,
-                    CreatedAt = d.CreatedAt,
-                    ModifiedAt = d.ModifiedAt,
-                })
+                .Select(GetDraftProjection())
                 .ToListAsync();
         }
     }

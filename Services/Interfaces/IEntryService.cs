@@ -1,25 +1,16 @@
 ﻿using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Models.DTOs.Entries.Get;
-using AstralDiaryApi.Models.DTOs.Entries.New;
 using AstralDiaryApi.Models.DTOs.Entries.Update;
 using AstralDiaryApi.Models.DTOs.Users;
 using AstralDiaryApi.Models.Entities;
 
 namespace AstralDiaryApi.Services.Interfaces
 {
-    public interface IEntryService
-        : IBaseEntryService<
-            Entry,
-            NewEntryRequest,
-            NewEntryResponse,
-            GetEntryResponse,
-            UpdateEntryRequest,
-            UpdateEntryResponse
-        >
+    public interface IEntryService : IBaseEntryService<Entry>
     {
         Task<List<GetEntryResponse>> GetCalendarEntries(Guid userId, DateOnly date);
         Task<List<GetEntryResponse>> GetRecentEntries(Guid userId, int limit);
-        Task<PagedResult<GetEntryResponse>> SearchAsync(Guid userId, GetSearchEntryRequest request);
+        Task<PagedResult> SearchAsync(Guid userId, GetSearchEntryRequest request);
         Task<bool> SoftDeleteEntry(Guid userId, string entryId);
 
         Task<List<GetEntryIdResponse>> GetEntryIds(Guid userId);
