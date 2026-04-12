@@ -58,7 +58,7 @@ jobs:
 
       - name: Check deployment status
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl status astral-diary-api.service" --no-pager
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo -n systemctl status astral-diary-api.service --no-pager"
 
       - name: Health check
         run: |
