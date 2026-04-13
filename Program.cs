@@ -69,6 +69,9 @@ if (builder.Environment.IsProduction())
         builder.Configuration.AddJsonStream(configStream);
 
         logger.LogInformation("All secrets loaded successfully from OCI Vault.");
+
+        var debugView = builder.Configuration.GetDebugView();
+        logger.LogInformation("Full Configuration: {Config}", debugView);
     }
     catch (Exception ex)
     {
