@@ -80,12 +80,15 @@ if (builder.Environment.IsProduction())
     }
 }
 
+// Temp for logging and testing
+var firebaseApp = FirebaseApp.Create(new AppOptions() { });
+
 if (builder.Environment.IsProduction())
 {
     var googleAdcJson = builder.Configuration["GoogleAdcJson"];
     if (!string.IsNullOrEmpty(googleAdcJson))
     {
-        FirebaseApp.Create(
+        firebaseApp = FirebaseApp.Create(
             new AppOptions()
             {
                 Credential = CredentialFactory
@@ -117,7 +120,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
     options.UseMySql(
         connectionString,
-        ServerVersion.AutoDetect(connectionString),
+        new MariaDbServerVersion(new Version(10, 5)),
         sqlOptions =>
         {
             sqlOptions.EnableRetryOnFailure(
@@ -197,6 +200,40 @@ builder.Services.Configure<RouteOptions>(options =>
 
 // Build
 var app = builder.Build();
+
+// Loggers for testing Firebase ADC and Connection String are working
+// Firebase logger
+var customLogger = app.Services.GetRequiredService<ILogger<Program>>();
+if (FirebaseApp.DefaultInstance != null)
+{
+    customLogger.LogInformation("Firebase successfully initialized: {AppName}", firebaseApp.Name);
+}
+
+// MySQL logger
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var dbContext = services.GetRequiredService<AppDbContext>();
+
+    try
+    {
+        // This actually sends a request to MySQL to verify the link
+        if (await dbContext.Database.CanConnectAsync())
+        {
+            customLogger.LogInformation("Database connection verified successfully.");
+        }
+        else
+        {
+            customLogger.LogWarning(
+                "Database configuration is valid, but the server is unreachable."
+            );
+        }
+    }
+    catch (Exception ex)
+    {
+        customLogger.LogError(ex, "An error occurred while connecting to the database.");
+    }
+}
 
 // Auto-migrate
 using (var scope = app.Services.CreateScope())
