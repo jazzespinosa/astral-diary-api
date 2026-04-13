@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     name: Build and Deploy
-    runs-on: ubuntu-latest  # Build machine (x64)
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code

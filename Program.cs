@@ -28,6 +28,8 @@ if (builder.Environment.IsProduction())
         var pepperSecretId = builder.Configuration["OCI:PepperSecretId"];
         var configSecretId = builder.Configuration["OCI:ConfigSecretId"];
 
+        logger.LogInformation($"DEBUG: ConnectionStringSecretId is: '{connectionStringSecretId}'");
+
         if (
             string.IsNullOrEmpty(connectionStringSecretId)
             || string.IsNullOrEmpty(googleAdcSecretId)
