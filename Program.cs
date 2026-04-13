@@ -81,7 +81,7 @@ if (builder.Environment.IsProduction())
 }
 
 // Temp for logging and testing
-var firebaseApp = FirebaseApp.Create(new AppOptions() { });
+FirebaseApp firebaseApp = null;
 
 if (builder.Environment.IsProduction())
 {
