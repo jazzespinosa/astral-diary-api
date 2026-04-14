@@ -100,7 +100,7 @@ if (builder.Environment.IsProduction())
 }
 else
 {
-    FirebaseApp.Create(
+    firebaseApp = FirebaseApp.Create(
         new AppOptions()
         {
             Credential = GoogleCredential.GetApplicationDefault(),
