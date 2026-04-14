@@ -39,7 +39,13 @@ jobs:
 
       - name: Publish for Linux ARM64
         run: |
-          dotnet publish --configuration Release --runtime linux-arm64 --output ./publish
+          dotnet publish --configuration Release --runtime linux-arm64 --self-contained false --output ./publish
+          dotnet tool install --global dotnet-ef
+          dotnet ef migrations bundle \
+            --configuration Release \
+            --runtime linux-arm64 \
+            --self-contained false \
+            --output ./publish/efbundle
           cp ./appsettings.Production.json ./publish/
 
       - name: Install SSH Key
@@ -54,18 +60,16 @@ jobs:
       - name: Deploy to OCI Server
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl stop astral-diary-api.service"
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "if [ -f /var/www/astral-diary-api/appsettings.Production.json ]; then cp /var/www/astral-diary-api/appsettings.Production.json /tmp/; fi"
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "rm -rf /var/www/astral-diary-api/*"
           rsync -avz --delete ./publish/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/astral-diary-api/
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "if [ -f /tmp/appsettings.Production.json ]; then cp /tmp/appsettings.Production.json /var/www/astral-diary-api/ && rm /tmp/appsettings.Production.json; fi"
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "chmod +x /var/www/astral-diary-api/efbundle && cd /var/www/astral-diary-api && ./efbundle --environment Production"
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "chmod -R 755 /var/www/astral-diary-api"
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl daemon-reload && sudo systemctl start astral-diary-api.service"
-
+          
       - name: Check deployment status
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo -n systemctl status astral-diary-api.service --no-pager"
 
       - name: Health check
         run: |
-          sleep 5
-          curl -f http://${{ secrets.SSH_HOST }}:5000/utility/online || exit 1
+          sleep 10
+          curl -f https://astral-diary-api.theworkpc.com/utility/online || exit 1
