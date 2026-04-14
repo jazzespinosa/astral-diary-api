@@ -16,11 +16,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 if (builder.Environment.IsProduction())
 {
-    var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Program>();
+    var loggerFactory = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Program>();
 
     try
     {
-        logger.LogInformation("Loading secrets from OCI Vault...");
+        loggerFactory.LogInformation("Loading secrets from OCI Vault...");
 
         var ociRegion = builder.Configuration["OCI:Region"] ?? "ap-singapore-1";
         var connectionStringSecretId = builder.Configuration["OCI:ConnectionStringSecretId"];
@@ -28,7 +28,9 @@ if (builder.Environment.IsProduction())
         var pepperSecretId = builder.Configuration["OCI:PepperSecretId"];
         var configSecretId = builder.Configuration["OCI:ConfigSecretId"];
 
-        logger.LogInformation($"DEBUG: ConnectionStringSecretId is: '{connectionStringSecretId}'");
+        loggerFactory.LogInformation(
+            $"DEBUG: ConnectionStringSecretId is: '{connectionStringSecretId}'"
+        );
 
         if (
             string.IsNullOrEmpty(connectionStringSecretId)
@@ -44,17 +46,29 @@ if (builder.Environment.IsProduction())
         using var secretsClient = new SecretsClient(provider);
         secretsClient.SetRegion(ociRegion);
 
-        logger.LogInformation("Fetching connection string from OCI...");
-        var connString = await GetSecretValueAsync(secretsClient, connectionStringSecretId, logger);
+        loggerFactory.LogInformation("Fetching connection string from OCI...");
+        var connString = await GetSecretValueAsync(
+            secretsClient,
+            connectionStringSecretId,
+            loggerFactory
+        );
 
-        logger.LogInformation("Fetching Google ADC from OCI...");
-        var googleAdcJson = await GetSecretValueAsync(secretsClient, googleAdcSecretId, logger);
+        loggerFactory.LogInformation("Fetching Google ADC from OCI...");
+        var googleAdcJson = await GetSecretValueAsync(
+            secretsClient,
+            googleAdcSecretId,
+            loggerFactory
+        );
 
-        logger.LogInformation("Fetching pepper secret from OCI...");
-        var pepperSecret = await GetSecretValueAsync(secretsClient, pepperSecretId, logger);
+        loggerFactory.LogInformation("Fetching pepper secret from OCI...");
+        var pepperSecret = await GetSecretValueAsync(secretsClient, pepperSecretId, loggerFactory);
 
-        logger.LogInformation("Fetching pepper secret from OCI...");
-        var configSecretJson = await GetSecretValueAsync(secretsClient, configSecretId, logger);
+        loggerFactory.LogInformation("Fetching pepper secret from OCI...");
+        var configSecretJson = await GetSecretValueAsync(
+            secretsClient,
+            configSecretId,
+            loggerFactory
+        );
 
         var secretsConfig = new Dictionary<string, string>
         {
@@ -68,14 +82,14 @@ if (builder.Environment.IsProduction())
         using var configStream = new MemoryStream(Encoding.UTF8.GetBytes(configSecretJson));
         builder.Configuration.AddJsonStream(configStream);
 
-        logger.LogInformation("All secrets loaded successfully from OCI Vault.");
+        loggerFactory.LogInformation("All secrets loaded successfully from OCI Vault.");
 
         var debugView = builder.Configuration.GetDebugView();
-        logger.LogInformation("Full Configuration: {Config}", debugView);
+        loggerFactory.LogInformation("Full Configuration: {Config}", debugView);
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "FATAL: Failed to load secrets from OCI Vault");
+        loggerFactory.LogError(ex, "FATAL: Failed to load secrets from OCI Vault");
         throw;
     }
 }
@@ -201,6 +215,8 @@ builder.Services.Configure<RouteOptions>(options =>
 // Build
 var app = builder.Build();
 
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
 if (app.Environment.IsProduction())
 {
     using (var scope = app.Services.CreateScope())
@@ -210,11 +226,10 @@ if (app.Environment.IsProduction())
         {
             var context = services.GetRequiredService<AppDbContext>();
             context.Database.Migrate();
-            Console.WriteLine("Database migration successful.");
+            logger.LogInformation("Database migration successful.");
         }
         catch (Exception ex)
         {
-            var logger = services.GetRequiredService<ILogger<Program>>();
             logger.LogError(ex, "An error occurred while migrating the database.");
             throw;
         }
@@ -223,10 +238,9 @@ if (app.Environment.IsProduction())
 
 // Loggers for testing Firebase ADC and Connection String are working
 // Firebase logger
-var customLogger = app.Services.GetRequiredService<ILogger<Program>>();
 if (FirebaseApp.DefaultInstance != null)
 {
-    customLogger.LogInformation("Firebase successfully initialized: {AppName}", firebaseApp.Name);
+    logger.LogInformation("Firebase successfully initialized: {AppName}", firebaseApp.Name);
 }
 
 // MySQL logger
@@ -240,18 +254,16 @@ using (var scope = app.Services.CreateScope())
         // This actually sends a request to MySQL to verify the link
         if (await dbContext.Database.CanConnectAsync())
         {
-            customLogger.LogInformation("Database connection verified successfully.");
+            logger.LogInformation("Database connection verified successfully.");
         }
         else
         {
-            customLogger.LogWarning(
-                "Database configuration is valid, but the server is unreachable."
-            );
+            logger.LogWarning("Database configuration is valid, but the server is unreachable.");
         }
     }
     catch (Exception ex)
     {
-        customLogger.LogError(ex, "An error occurred while connecting to the database.");
+        logger.LogError(ex, "An error occurred while connecting to the database.");
     }
 }
 
@@ -264,14 +276,14 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<AppDbContext>();
         if (context.Database.GetPendingMigrations().Any())
         {
-            Console.WriteLine("Applying migrations...");
+            logger.LogInformation("Applying migrations...");
             context.Database.Migrate();
-            Console.WriteLine("Migrations applied successfully.");
+            logger.LogInformation("Migrations applied successfully.");
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"An error occurred while migrating the database: {ex.Message}");
+        logger.LogInformation($"An error occurred while migrating the database: {ex.Message}");
     }
 }
 
