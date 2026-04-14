@@ -11,21 +11,34 @@ namespace AstralDiaryApi.Controllers
     public class UserController : BaseAppController
     {
         private readonly IEntryService _entryService;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(IUserService userService, IEntryService entryService)
+        public UserController(
+            IUserService userService,
+            IEntryService entryService,
+            ILogger<UserController> logger
+        )
             : base(userService)
         {
             _entryService = entryService;
+            _logger = logger;
         }
 
         [HttpPost("login")]
         [Authorize]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
+            _logger.LogInformation("Executing Login...");
+
             if (!IsEmailVerified())
                 return BadRequest("Email is not verified.");
 
+            _logger.LogInformation("Email verified.");
+
             var firebaseUid = GetFirebaseUid();
+
+            _logger.LogInformation("Firebase UID 0: {0}", firebaseUid);
+
             var response = await _userService.LoginUser(firebaseUid, loginRequest);
             return Ok(response);
         }
