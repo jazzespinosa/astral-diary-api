@@ -42,9 +42,13 @@ jobs:
           dotnet publish --configuration Release --runtime linux-arm64 --self-contained false --output ./publish
           dotnet tool install --global dotnet-ef
           dotnet ef migrations bundle \
+            --project . \
+            --startup-project . \
             --configuration Release \
             --runtime linux-arm64 \
-            --output ./publish/efbundle
+            --no-self-contained \
+            --output ./publish/efbundle \
+            --force
           cp ./appsettings.Production.json ./publish/
 
       - name: Install SSH Key
