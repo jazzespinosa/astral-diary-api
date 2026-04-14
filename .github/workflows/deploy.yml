@@ -39,15 +39,15 @@ jobs:
 
       - name: Publish for Linux ARM64
         run: |
-          dotnet publish --configuration Release --runtime linux-arm64 --self-contained false --output ./publish
           dotnet tool install --global dotnet-ef
+          dotnet clean --configuration Release
+          dotnet build --configuration Release
           dotnet ef migrations bundle \
-            --project . \
-            --startup-project . \
             --configuration Release \
             --runtime linux-arm64 \
             --output ./publish/efbundle \
             --force
+          dotnet publish --configuration Release --runtime linux-arm64 --self-contained false --output ./publish      
           cp ./appsettings.Production.json ./publish/
 
       - name: Install SSH Key
