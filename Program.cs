@@ -81,40 +81,33 @@ if (builder.Environment.IsProduction())
 }
 
 // Temp for logging and testing
-FirebaseApp firebaseApp = FirebaseApp.Create(
-    new AppOptions()
-    {
-        Credential = GoogleCredential.GetApplicationDefault(),
-        ProjectId = "astral-diary",
-    }
-);
-;
+FirebaseApp firebaseApp = null;
 
-//if (builder.Environment.IsProduction())
-//{
-//    var googleAdcJson = builder.Configuration["GoogleAdcJson"];
-//    if (!string.IsNullOrEmpty(googleAdcJson))
-//    {
-//        firebaseApp = FirebaseApp.Create(
-//            new AppOptions()
-//            {
-//                Credential = CredentialFactory
-//                    .FromJson<ServiceAccountCredential>(googleAdcJson)
-//                    .ToGoogleCredential(),
-//            }
-//        );
-//    }
-//}
-//else
-//{
-//    FirebaseApp.Create(
-//        new AppOptions()
-//        {
-//            Credential = GoogleCredential.GetApplicationDefault(),
-//            ProjectId = "astral-diary",
-//        }
-//    );
-//}
+if (builder.Environment.IsProduction())
+{
+    var googleAdcJson = builder.Configuration["GoogleAdcJson"];
+    if (!string.IsNullOrEmpty(googleAdcJson))
+    {
+        firebaseApp = FirebaseApp.Create(
+            new AppOptions()
+            {
+                Credential = CredentialFactory
+                    .FromJson<ServiceAccountCredential>(googleAdcJson)
+                    .ToGoogleCredential(),
+            }
+        );
+    }
+}
+else
+{
+    FirebaseApp.Create(
+        new AppOptions()
+        {
+            Credential = GoogleCredential.GetApplicationDefault(),
+            ProjectId = "astral-diary",
+        }
+    );
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
