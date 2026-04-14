@@ -39,17 +39,7 @@ jobs:
 
       - name: Publish for Linux ARM64
         run: |
-          dotnet tool install --global dotnet-ef
-          dotnet clean 
-          dotnet restore -r linux-arm64
-          dotnet build --configuration Release --no-restore
-          dotnet ef migrations bundle \
-            --configuration Release \
-            --runtime linux-arm64 \
-            --output ./publish/efbundle \
-            --no-build \
-            --force
-          dotnet publish --configuration Release --runtime linux-arm64 --self-contained false --output ./publish --no-restore
+          dotnet publish --configuration Release --runtime linux-arm64 --self-contained false --output ./publish
           cp ./appsettings.Production.json ./publish/
 
       - name: Install SSH Key
@@ -65,7 +55,6 @@ jobs:
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl stop astral-diary-api.service"
           rsync -avz --delete ./publish/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/astral-diary-api/
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "chmod +x /var/www/astral-diary-api/efbundle && cd /var/www/astral-diary-api && ./efbundle --environment Production"
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "chmod -R 755 /var/www/astral-diary-api"
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl daemon-reload && sudo systemctl start astral-diary-api.service"
           

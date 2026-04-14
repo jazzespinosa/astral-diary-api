@@ -201,6 +201,26 @@ builder.Services.Configure<RouteOptions>(options =>
 // Build
 var app = builder.Build();
 
+if (app.Environment.IsProduction())
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<AppDbContext>();
+            context.Database.Migrate();
+            Console.WriteLine("Database migration successful.");
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while migrating the database.");
+            throw;
+        }
+    }
+}
+
 // Loggers for testing Firebase ADC and Connection String are working
 // Firebase logger
 var customLogger = app.Services.GetRequiredService<ILogger<Program>>();
