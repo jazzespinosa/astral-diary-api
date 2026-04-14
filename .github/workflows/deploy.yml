@@ -46,7 +46,6 @@ jobs:
             --startup-project . \
             --configuration Release \
             --runtime linux-arm64 \
-            --no-self-contained \
             --output ./publish/efbundle \
             --force
           cp ./appsettings.Production.json ./publish/
