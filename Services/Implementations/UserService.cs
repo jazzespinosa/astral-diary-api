@@ -30,10 +30,6 @@ namespace AstralDiaryApi.Services.Implementations
                 loginRequest.Email
             );
 
-            _logger.LogInformation("Firebase UID 1: {0}", userRecord.Uid);
-            _logger.LogInformation("Firebase UID 2: {0}", firebaseUid);
-            _logger.LogInformation("Email: {0}", userRecord.Email);
-
             if (userRecord.Uid != firebaseUid)
             {
                 throw new Exception("Firebase UID does not match email.");
@@ -104,15 +100,6 @@ namespace AstralDiaryApi.Services.Implementations
             user = user ?? throw new UnauthorizedAccessException("User not found.");
 
             return user.UserId;
-        }
-
-        public async Task<string?> GetUserAvatar(Guid userId)
-        {
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-
-            user = user ?? throw new UnauthorizedAccessException("User not found.");
-
-            return user.Avatar;
         }
 
         public async Task<string?> UpdateUserAvatar(Guid userId, string? avatar)

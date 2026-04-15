@@ -83,9 +83,6 @@ if (builder.Environment.IsProduction())
         builder.Configuration.AddJsonStream(configStream);
 
         loggerFactory.LogInformation("All secrets loaded successfully from OCI Vault.");
-
-        var debugView = builder.Configuration.GetDebugView();
-        loggerFactory.LogInformation("Full Configuration: {Config}", debugView);
     }
     catch (Exception ex)
     {
@@ -94,15 +91,12 @@ if (builder.Environment.IsProduction())
     }
 }
 
-// Temp for logging and testing
-FirebaseApp firebaseApp = null;
-
 if (builder.Environment.IsProduction())
 {
     var googleAdcJson = builder.Configuration["GoogleAdcJson"];
     if (!string.IsNullOrEmpty(googleAdcJson))
     {
-        firebaseApp = FirebaseApp.Create(
+        FirebaseApp.Create(
             new AppOptions()
             {
                 Credential = CredentialFactory
@@ -114,7 +108,7 @@ if (builder.Environment.IsProduction())
 }
 else
 {
-    firebaseApp = FirebaseApp.Create(
+    FirebaseApp.Create(
         new AppOptions()
         {
             Credential = GoogleCredential.GetApplicationDefault(),
@@ -236,13 +230,6 @@ if (app.Environment.IsProduction())
     }
 }
 
-// Loggers for testing Firebase ADC and Connection String are working
-// Firebase logger
-if (FirebaseApp.DefaultInstance != null)
-{
-    logger.LogInformation("Firebase successfully initialized: {AppName}", firebaseApp.Name);
-}
-
 // MySQL logger
 using (var scope = app.Services.CreateScope())
 {
@@ -251,7 +238,7 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        // This actually sends a request to MySQL to verify the link
+        // Send request to MySQL to verify the link
         if (await dbContext.Database.CanConnectAsync())
         {
             logger.LogInformation("Database connection verified successfully.");
@@ -287,7 +274,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
