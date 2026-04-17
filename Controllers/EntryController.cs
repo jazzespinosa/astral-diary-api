@@ -39,12 +39,23 @@ namespace AstralDiaryApi.Controllers
             return Created(uri, response);
         }
 
+        [HttpGet("check-limit")]
+        [Authorize]
+        public async Task<IActionResult> CheckDailyLimit()
+        {
+            var userId = await GetUserId();
+            var response = await _entryService.CountNewEntriesToday(userId);
+
+            return Ok(new { Count = response });
+        }
+
         [HttpGet("get-calendar-entries")]
         [Authorize]
         public async Task<IActionResult> GetCalendarEntries([FromQuery] DateOnly date)
         {
             var userId = await GetUserId();
             var response = await _entryService.GetCalendarEntries(userId, date);
+
             return Ok(response);
         }
 

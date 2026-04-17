@@ -8,7 +8,7 @@ namespace AstralDiaryApi.Services.Interfaces
     public interface IDraftService : IBaseEntryService<Draft>
     {
         Task<List<GetDraftResponse>> GetAllDrafts(Guid userId);
-        Task<GetDraftCountResponse> CountDraftsAsync(Guid userId);
+        Task<int> CountDraftsAsync(Guid userId);
         Task<bool> DeleteDraft(Guid userId, string draftId);
         Task<UpdateEntryResponse> PublishDraft(Guid userId, UpdateDraftRequest updateDraftRequest);
     }

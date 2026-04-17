@@ -25,7 +25,6 @@ namespace AstralDiaryApi.Controllers
         public async Task<IActionResult> CreateDraft([FromForm] NewDraftRequest newDraftRequest)
         {
             var userId = await GetUserId();
-            var dateNow = Request.GetUserLocalDate();
 
             var response = await _draftService.Create(userId, newDraftRequest);
 
@@ -39,7 +38,7 @@ namespace AstralDiaryApi.Controllers
             var userId = await GetUserId();
             var response = await _draftService.CountDraftsAsync(userId);
 
-            return Ok(response);
+            return Ok(new { Count = response });
         }
 
         [HttpGet("get-all")]

@@ -37,7 +37,7 @@ namespace AstralDiaryApi.Controllers
             var pepperBytes = HMACSHA256.HashData(keyBytes, uidBytes);
             var pepper = Convert.ToBase64String(pepperBytes);
 
-            return Ok(new { pepper });
+            return Ok(new { ServerPepper = pepper });
         }
     }
 }

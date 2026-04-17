@@ -27,5 +27,6 @@ namespace AstralDiaryApi.Services.Interfaces
         Task<List<UserMoodMap>> GetUserMoodMapAsync(Guid userId, int year);
         Task<List<GetEntryResponse>> GetDeletedEntries(Guid userId);
         Task<bool> RestoreEntries(Guid userId, string[] entryIds);
+        Task<int> CountNewEntriesToday(Guid userId);
     }
 }

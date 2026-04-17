@@ -27,9 +27,9 @@ namespace AstralDiaryApi.Services.Implementations
 
         public override async Task<IResponseDto> Create(Guid userId, IRequestDto newDraftRequest)
         {
-            var count = await _dbContext.Drafts.CountAsync(d => d.UserId == userId);
+            var draftsCount = await CountDraftsAsync(userId);
 
-            if (count >= 10)
+            if (draftsCount >= 10)
             {
                 throw new MaxItemsExceededException("Maximum number of drafts (10) reached");
             }
@@ -113,10 +113,9 @@ namespace AstralDiaryApi.Services.Implementations
             return new UpdateEntryResponse { Id = newEntry.EntityId };
         }
 
-        public async Task<GetDraftCountResponse> CountDraftsAsync(Guid userId)
+        public async Task<int> CountDraftsAsync(Guid userId)
         {
-            var count = await _dbContext.Drafts.CountAsync(d => d.UserId == userId);
-            return new GetDraftCountResponse { Count = count };
+            return await _dbContext.Drafts.AsNoTracking().CountAsync(d => d.UserId == userId);
         }
 
         public async Task<bool> DeleteDraft(Guid userId, string draftId)

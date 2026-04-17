@@ -11,17 +11,11 @@ namespace AstralDiaryApi.Services.Implementations
     {
         private readonly AppDbContext _dbContext;
         private readonly IEntryService _entryService;
-        private readonly ILogger<UserService> _logger;
 
-        public UserService(
-            AppDbContext dbContext,
-            IEntryService entryService,
-            ILogger<UserService> logger
-        )
+        public UserService(AppDbContext dbContext, IEntryService entryService)
         {
             _dbContext = dbContext;
             _entryService = entryService;
-            _logger = logger;
         }
 
         public async Task<LoginResponse> LoginUser(string firebaseUid, LoginRequest loginRequest)

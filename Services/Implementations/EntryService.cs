@@ -20,6 +20,15 @@ namespace AstralDiaryApi.Services.Implementations
 
         public override async Task<IResponseDto> Create(Guid userId, IRequestDto newEntryRequest)
         {
+            var createdEntriesToday = await CountNewEntriesToday(userId);
+
+            if (createdEntriesToday >= 3)
+            {
+                throw new MaxItemsExceededException(
+                    "Maximum number of new entries per day (3) reached"
+                );
+            }
+
             var entry = new Entry
             {
                 UserId = userId,
@@ -91,6 +100,18 @@ namespace AstralDiaryApi.Services.Implementations
             await _dbContext.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<int> CountNewEntriesToday(Guid userId)
+        {
+            var (startUtc, endUtc) = GetLocalDayRangeUtc();
+
+            return await _dbContext
+                .Entries.AsNoTracking()
+                .IgnoreQueryFilters()
+                .CountAsync(e =>
+                    e.UserId == userId && e.CreatedAt >= startUtc && e.CreatedAt <= endUtc
+                );
         }
 
         public async Task<List<GetEntryIdResponse>> GetEntryIds(Guid userId)
@@ -181,7 +202,8 @@ namespace AstralDiaryApi.Services.Implementations
             DateOnly currentDate
         )
         {
-            var entriesCount = await GetEntriesCountAsync(userId);
+            var dailyEntriesCount = await CountNewEntriesToday(userId);
+            var totalEntriesCount = await GetEntriesCountAsync(userId);
             var currentStreak = await GetCurrentStreakAsync(userId, currentDate);
             var firstEntry = await GetFirstEntryAsync(userId);
             var latestEntry = await GetLatestEntryAsync(userId);
@@ -191,7 +213,8 @@ namespace AstralDiaryApi.Services.Implementations
                 Email = userInitialDetailsDto.Email,
                 DisplayName = userInitialDetailsDto.DisplayName,
                 Avatar = userInitialDetailsDto.Avatar,
-                TotalEntries = entriesCount,
+                DailyEntries = dailyEntriesCount,
+                TotalEntries = totalEntriesCount,
                 FirstEntryId = firstEntry?.EntryId,
                 FirstEntryDate = firstEntry?.Date,
                 LatestEntryId = latestEntry?.EntryId,
@@ -309,6 +332,19 @@ namespace AstralDiaryApi.Services.Implementations
             await _dbContext.SaveChangesAsync();
 
             return true;
+        }
+
+        // UTC+8 (Manila Time)
+        private (DateTime startUtc, DateTime endUtc) GetLocalDayRangeUtc()
+        {
+            var timezone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var nowUtc = DateTime.UtcNow;
+            var nowPh = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, timezone);
+
+            var startPh = nowPh.Date;
+            var startUtc = TimeZoneInfo.ConvertTimeToUtc(startPh, timezone);
+
+            return (startUtc, startUtc.AddDays(1));
         }
     }
 }

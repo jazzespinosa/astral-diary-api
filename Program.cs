@@ -1,6 +1,7 @@
 using System.Text;
 using AstralDiaryApi.Data;
 using AstralDiaryApi.env;
+using AstralDiaryApi.Middlewares;
 using AstralDiaryApi.Services.Implementations;
 using AstralDiaryApi.Services.Interfaces;
 using FirebaseAdmin;
@@ -211,24 +212,8 @@ var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-if (app.Environment.IsProduction())
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        try
-        {
-            var context = services.GetRequiredService<AppDbContext>();
-            context.Database.Migrate();
-            logger.LogInformation("Database migration successful.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "An error occurred while migrating the database.");
-            throw;
-        }
-    }
-}
+// Custom logger middleware
+app.UseMiddleware<RequestResponseLoggingMiddleware>();
 
 // MySQL logger
 using (var scope = app.Services.CreateScope())
@@ -255,22 +240,26 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Auto-migrate
-using (var scope = app.Services.CreateScope())
+if (app.Environment.IsProduction())
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var context = services.GetRequiredService<AppDbContext>();
-        if (context.Database.GetPendingMigrations().Any())
+        var services = scope.ServiceProvider;
+        try
         {
-            logger.LogInformation("Applying migrations...");
-            context.Database.Migrate();
-            logger.LogInformation("Migrations applied successfully.");
+            var context = services.GetRequiredService<AppDbContext>();
+            if (context.Database.GetPendingMigrations().Any())
+            {
+                logger.LogInformation("Applying migrations...");
+                context.Database.Migrate();
+                logger.LogInformation("Database migration successful.");
+            }
         }
-    }
-    catch (Exception ex)
-    {
-        logger.LogInformation($"An error occurred while migrating the database: {ex.Message}");
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while migrating the database.");
+            throw;
+        }
     }
 }
 

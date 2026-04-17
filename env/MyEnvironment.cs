@@ -16,5 +16,7 @@
         public string CloudFirestoreDbLink => _config["CloudFirestoreDbLink"];
 
         public string ServerSecret => _config["Crypto:ServerPepperSecret"];
+
+        public string CronJobKey => _config["CronJobKey"];
     }
 }

@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AstralDiaryApi.Common.Generics
 {
-    public abstract class BaseEntryService<TEntity>
+    public abstract class BaseEntryService<TEntity> : IBaseEntryService<TEntity>
         where TEntity : class, IEntityIdSource
     {
         protected readonly AppDbContext _dbContext;

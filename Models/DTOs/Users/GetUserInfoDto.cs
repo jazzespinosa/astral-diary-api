@@ -5,6 +5,7 @@
         public required string Email { get; set; }
         public required string DisplayName { get; set; }
         public string? Avatar { get; set; }
+        public int DailyEntries { get; set; }
         public int TotalEntries { get; set; }
         public string? FirstEntryId { get; set; }
         public DateOnly? FirstEntryDate { get; set; }
