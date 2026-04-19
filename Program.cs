@@ -287,7 +287,12 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
 
+app.UseRouting();
+
+if (app.Environment.IsDevelopment())
+{
     app.UseCors("AllowDevelopmentOrigins");
 }
 else
@@ -298,7 +303,6 @@ else
 app.UseExceptionHandler("/error");
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
