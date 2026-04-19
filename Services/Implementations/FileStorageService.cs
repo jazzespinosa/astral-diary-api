@@ -1,5 +1,6 @@
 ﻿using AstralDiaryApi.Common.Interfaces;
 using AstralDiaryApi.Data;
+using AstralDiaryApi.env;
 using AstralDiaryApi.Exceptions;
 using AstralDiaryApi.Models.DTOs.Attachments;
 using AstralDiaryApi.Services.Interfaces;
@@ -13,9 +14,10 @@ namespace AstralDiaryApi.Services.Implementations
     {
         private readonly AppDbContext _dbContext;
         private readonly ObjectStorageClient _objectStorageClient;
-        private readonly IHostEnvironment _env;
+        private readonly IHostEnvironment _hostEnv;
         private readonly IConfiguration _configuration;
         private readonly ILogger<FileStorageService> _logger;
+        private readonly MyEnvironment _env;
         private readonly string _namespace;
         private readonly string _bucketName;
         private readonly bool _testInLocalDir;
@@ -23,17 +25,19 @@ namespace AstralDiaryApi.Services.Implementations
         public FileStorageService(
             AppDbContext dbContext,
             ObjectStorageClient objectStorageClient,
-            IHostEnvironment env,
+            IHostEnvironment hostEnv,
             IConfiguration configuration,
-            ILogger<FileStorageService> logger
+            ILogger<FileStorageService> logger,
+            MyEnvironment env
         )
         {
             _dbContext = dbContext;
             _objectStorageClient = objectStorageClient;
-            _env = env;
+            _hostEnv = hostEnv;
             _configuration = configuration;
             _logger = logger;
-            _bucketName = _configuration["OciStorage:BucketName"];
+            _env = env;
+            _bucketName = _env.BucketName;
 
             var testInLocalDir = bool.TryParse(
                 _configuration["TestInLocalDir"],
@@ -69,7 +73,7 @@ namespace AstralDiaryApi.Services.Implementations
             var attachmentId = $"{entityId}-{Guid.NewGuid().ToString()}";
             var thumbnailId = attachmentId + "-thumbnail";
 
-            if (_env.IsProduction() || !_testInLocalDir)
+            if (_hostEnv.IsProduction() || !_testInLocalDir)
             {
                 byte[] attachmentData;
                 byte[] thumbnailData;
@@ -182,7 +186,7 @@ namespace AstralDiaryApi.Services.Implementations
             if (fileId == null)
                 throw new NotFoundException("File not found");
 
-            if (_env.IsProduction() || !_testInLocalDir)
+            if (_hostEnv.IsProduction() || !_testInLocalDir)
                 return await GetFileOciAsync(fileId);
             else
                 return await GetFileLocal(userId, entityId, fileId);
@@ -255,7 +259,7 @@ namespace AstralDiaryApi.Services.Implementations
             if (String.IsNullOrEmpty(entityId) || String.IsNullOrEmpty(attachmentId))
                 return;
 
-            if (_env.IsProduction() || !_testInLocalDir)
+            if (_hostEnv.IsProduction() || !_testInLocalDir)
             {
                 await DeleteFileOciAsync(attachmentId);
                 await DeleteFileOciAsync(thumbnailId);

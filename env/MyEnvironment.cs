@@ -18,5 +18,7 @@
         public string ServerSecret => _config["Crypto:ServerPepperSecret"];
 
         public string CronJobKey => _config["CronJobKey"];
+
+        public string BucketName => _config["BucketName"];
     }
 }
