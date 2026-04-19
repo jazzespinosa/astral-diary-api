@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Oci.Common.Auth;
+using Oci.ObjectstorageService;
 using Oci.SecretsService;
 using Oci.SecretsService.Requests;
 
@@ -28,10 +29,6 @@ if (builder.Environment.IsProduction())
         var googleAdcSecretId = builder.Configuration["OCI:GoogleAdcSecretId"];
         var pepperSecretId = builder.Configuration["OCI:PepperSecretId"];
         var configSecretId = builder.Configuration["OCI:ConfigSecretId"];
-
-        loggerFactory.LogInformation(
-            $"DEBUG: ConnectionStringSecretId is: '{connectionStringSecretId}'"
-        );
 
         if (
             string.IsNullOrEmpty(connectionStringSecretId)
@@ -64,7 +61,7 @@ if (builder.Environment.IsProduction())
         loggerFactory.LogInformation("Fetching pepper secret from OCI...");
         var pepperSecret = await GetSecretValueAsync(secretsClient, pepperSecretId, loggerFactory);
 
-        loggerFactory.LogInformation("Fetching pepper secret from OCI...");
+        loggerFactory.LogInformation("Fetching config secret from OCI...");
         var configSecretJson = await GetSecretValueAsync(
             secretsClient,
             configSecretId,
@@ -145,6 +142,29 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEntryService, EntryService>();
 builder.Services.AddScoped<IDraftService, DraftService>();
+builder.Services.AddScoped<ObjectStorageClient>(provider =>
+{
+    var env = provider.GetRequiredService<IHostEnvironment>();
+    var config = provider.GetRequiredService<IConfiguration>();
+    var logger = provider.GetRequiredService<ILogger<ObjectStorageClient>>();
+
+    IBasicAuthenticationDetailsProvider authProvider;
+
+    if (env.IsProduction())
+    {
+        logger.LogInformation("Using Instance Principal authentication for OCI");
+        authProvider = new InstancePrincipalsAuthenticationDetailsProvider();
+    }
+    else
+    {
+        logger.LogInformation("Using Config File authentication for OCI");
+        var configFilePath = config["OciStorage:ConfigFilePath"] ?? "~/.oci/config";
+        var profile = config["OciStorage:Profile"] ?? "DEFAULT";
+        authProvider = new ConfigFileAuthenticationDetailsProvider(configFilePath, profile);
+    }
+
+    return new ObjectStorageClient(authProvider);
+});
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IUtilityService, UtilityService>();
 

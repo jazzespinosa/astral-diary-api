@@ -16,7 +16,7 @@ namespace AstralDiaryApi.Middlewares
             _logger = logger;
         }
 
-        // InvokeAsync runs on EVERY incoming request
+        // Runs on every incoming request
         public async Task InvokeAsync(HttpContext context)
         {
             await LogRequest(context);

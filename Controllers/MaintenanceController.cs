@@ -59,7 +59,12 @@ namespace AstralDiaryApi.Controllers
                 foreach (var entry in entriesToDelete)
                 {
                     _appDbContext.Remove(entry);
-                    await _fileStorageService.DeleteSavedAttachment(entry.EntityId, entry.UserId);
+                    await _fileStorageService.DeleteSavedAttachment(
+                        entry.UserId,
+                        entry.EntityId,
+                        entry.AttachmentId,
+                        entry.ThumbnailId
+                    );
                 }
 
                 await _appDbContext.SaveChangesAsync();

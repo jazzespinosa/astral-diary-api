@@ -85,6 +85,7 @@ namespace AstralDiaryApi.Common.Generics
         )
         {
             var currentAttachmentId = entity.AttachmentId;
+            var currentThumbnailId = entity.ThumbnailId;
 
             if (currentAttachmentId == null && updateEntryRequest.EncryptedAttachments == null)
                 return;
@@ -92,11 +93,15 @@ namespace AstralDiaryApi.Common.Generics
             if (updateEntryRequest.EncryptedAttachments == null)
             {
                 entity.AttachmentId = null;
-                entity.AttachmentPath = null;
-                entity.ThumbnailPath = null;
+                entity.ThumbnailId = null;
                 entity.AttachmentHash = null;
 
-                await _fileStorageService.DeleteSavedAttachment(entityId, userId);
+                await _fileStorageService.DeleteSavedAttachment(
+                    userId,
+                    entityId,
+                    currentAttachmentId,
+                    currentThumbnailId
+                );
 
                 return;
             }
@@ -109,7 +114,12 @@ namespace AstralDiaryApi.Common.Generics
 
             if (!AreHashesIdentical(entity.AttachmentHash, updateEntryRequest.AttachmentHash))
             {
-                await _fileStorageService.DeleteSavedAttachment(entityId, userId);
+                await _fileStorageService.DeleteSavedAttachment(
+                    userId,
+                    entityId,
+                    currentAttachmentId,
+                    currentThumbnailId
+                );
                 await AddAttachmentsAsync(entity, updateEntryRequest, userId);
 
                 return;
@@ -126,15 +136,15 @@ namespace AstralDiaryApi.Common.Generics
         {
             if (newRequest.EncryptedAttachments != null)
             {
-                var path = await _fileStorageService.SaveAttachment(
-                    newRequest.EncryptedAttachments,
-                    newRequest.EncryptedThumbnails,
-                    entity.EntityId,
-                    userId
-                );
-                entity.AttachmentId = path.AttachmentId;
-                entity.AttachmentPath = path.AttachmentPath;
-                entity.ThumbnailPath = path.ThumbnailPath;
+                (string attachmentId, string thumbnailId) =
+                    await _fileStorageService.SaveAttachment(
+                        newRequest.EncryptedAttachments,
+                        newRequest.EncryptedThumbnails,
+                        entity.EntityId,
+                        userId
+                    );
+                entity.AttachmentId = attachmentId;
+                entity.ThumbnailId = thumbnailId;
                 entity.AttachmentHash = newRequest.AttachmentHash;
 
                 await _dbContext.SaveChangesAsync();

@@ -13,8 +13,7 @@
         string ContentIv { get; set; }
         string ContentSalt { get; set; }
         string? AttachmentId { get; set; }
-        string? AttachmentPath { get; set; }
-        string? ThumbnailPath { get; set; }
+        string? ThumbnailId { get; set; }
         string? AttachmentHash { get; set; }
     }
 }

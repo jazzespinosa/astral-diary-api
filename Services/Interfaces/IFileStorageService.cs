@@ -5,7 +5,7 @@ namespace AstralDiaryApi.Services.Interfaces
 {
     public interface IFileStorageService
     {
-        Task<AttachmentObject> SaveAttachment(
+        Task<(string, string)> SaveAttachment(
             IFormFile attachmentFile,
             IFormFile thumbnailFile,
             string entityId,
@@ -18,6 +18,11 @@ namespace AstralDiaryApi.Services.Interfaces
             string attachmentId
         )
             where TEntity : class, IEntityIdSource;
-        Task DeleteSavedAttachment(string entityId, Guid userId);
+        Task DeleteSavedAttachment(
+            Guid userId,
+            string entityId,
+            string attachmentId,
+            string thumbnailId
+        );
     }
 }

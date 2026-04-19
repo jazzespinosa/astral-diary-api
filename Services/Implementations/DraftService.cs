@@ -90,6 +90,8 @@ namespace AstralDiaryApi.Services.Implementations
             var draft = await _dbContext.Drafts.FirstOrDefaultAsync(d =>
                 d.UserId == userId && d.EntityId == updateDraftRequest.Id
             );
+            var attachmentId = draft?.AttachmentId;
+            var thumbnailId = draft?.ThumbnailId;
 
             var newEntry = new Entry
             {
@@ -108,8 +110,6 @@ namespace AstralDiaryApi.Services.Implementations
             await DeleteDraft(userId, draftId);
             await _dbContext.SaveChangesAsync();
 
-            await _fileStorageService.DeleteSavedAttachment(draftId, userId);
-
             return new UpdateEntryResponse { Id = newEntry.EntityId };
         }
 
@@ -121,6 +121,8 @@ namespace AstralDiaryApi.Services.Implementations
         public async Task<bool> DeleteDraft(Guid userId, string draftId)
         {
             var draft = await FindEntityByIdAsync(userId, draftId);
+            var attachmentId = draft?.AttachmentId;
+            var thumbnailId = draft?.ThumbnailId;
 
             if (draft == null)
                 throw new NotFoundException("Draft not found");
@@ -128,7 +130,12 @@ namespace AstralDiaryApi.Services.Implementations
             _dbContext.Drafts.Remove(draft);
             await _dbContext.SaveChangesAsync();
 
-            await _fileStorageService.DeleteSavedAttachment(draftId, userId);
+            await _fileStorageService.DeleteSavedAttachment(
+                userId,
+                draftId,
+                attachmentId,
+                thumbnailId
+            );
 
             return true;
         }

@@ -38,11 +38,8 @@ namespace AstralDiaryApi.Models.Entities
         [Column("attachment_id")]
         public string? AttachmentId { get; set; }
 
-        [Column("att_file_path")]
-        public string? AttachmentPath { get; set; }
-
-        [Column("att_thumbnail_path")]
-        public string? ThumbnailPath { get; set; }
+        [Column("thumbnail_id")]
+        public string? ThumbnailId { get; set; }
 
         [Column("attachment_hash")]
         public string? AttachmentHash { get; set; }

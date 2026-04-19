@@ -53,7 +53,7 @@ namespace AstralDiaryApi.Controllers
                 return BadRequest("Invalid entity type.");
 
             return File(
-                fileDownloadResult.FileBytes,
+                fileDownloadResult.FileStream,
                 "application/octet-stream",
                 fileDownloadResult.FileName
             );

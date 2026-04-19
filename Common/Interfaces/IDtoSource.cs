@@ -60,9 +60,7 @@
     {
         public required string Id { get; set; }
         public DocuType DocuType { get; set; }
-
         public string Type => DocuType.ToString();
-
         public DateOnly Date { get; set; }
         public int Mood { get; set; }
         public required string EncryptedContent { get; set; }
@@ -74,13 +72,6 @@
         public DateTime ModifiedAt { get; set; }
         public DateTime? DeletedAt { get; set; }
         public DateTime? PublishedAt { get; set; }
-    }
-
-    public class AttachmentObject
-    {
-        public required string AttachmentPath { get; set; }
-        public required string ThumbnailPath { get; set; }
-        public required string AttachmentId { get; set; }
     }
 
     public interface IUpdateRequest : IRequestDto
