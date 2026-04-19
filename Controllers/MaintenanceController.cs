@@ -49,7 +49,8 @@ namespace AstralDiaryApi.Controllers
 
             try
             {
-                var daysToDelete = DateTime.UtcNow.AddDays(-30);
+                // to update to [-30]; only for testing
+                var daysToDelete = DateTime.UtcNow.AddDays(0);
 
                 var entriesToDelete = await _appDbContext
                     .Entries.IgnoreQueryFilters()
