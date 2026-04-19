@@ -34,7 +34,12 @@ namespace AstralDiaryApi.Services.Implementations
             _configuration = configuration;
             _logger = logger;
             _bucketName = _configuration["OciStorage:BucketName"];
-            _testInLocalDir = bool.Parse(_configuration["TestInLocalDir"]) || false;
+
+            var testInLocalDir = bool.TryParse(
+                _configuration["TestInLocalDir"],
+                out _testInLocalDir
+            );
+            _testInLocalDir = testInLocalDir || false;
 
             try
             {
