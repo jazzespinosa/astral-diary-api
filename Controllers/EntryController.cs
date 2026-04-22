@@ -23,6 +23,8 @@ namespace AstralDiaryApi.Controllers
 
         [HttpPost("create")]
         [Authorize]
+        [RequestSizeLimit(15 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 15 * 1024 * 1024)]
         public async Task<IActionResult> CreateEntry([FromForm] NewEntryRequest newEntryRequest)
         {
             var userId = await GetUserId();
@@ -104,6 +106,8 @@ namespace AstralDiaryApi.Controllers
 
         [HttpPut("update/{entryId}")]
         [Authorize]
+        [RequestSizeLimit(15 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 15 * 1024 * 1024)]
         public async Task<IActionResult> UpdateEntry(
             string entryId,
             [FromForm] UpdateEntryRequest updateEntryRequest

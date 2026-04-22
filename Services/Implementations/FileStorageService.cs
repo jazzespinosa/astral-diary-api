@@ -52,9 +52,7 @@ namespace AstralDiaryApi.Services.Implementations
                 );
                 _namespace = namespaceResponse.Result.Value;
 
-                _logger.LogInformation(
-                    $"OCI Storage Service initialized. Namespace: {_namespace}, Bucket: {_bucketName}"
-                );
+                _logger.LogInformation($"OCI Storage Service initialized.");
             }
             catch (Exception ex)
             {

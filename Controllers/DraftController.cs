@@ -22,6 +22,8 @@ namespace AstralDiaryApi.Controllers
 
         [HttpPost("create")]
         [Authorize]
+        [RequestSizeLimit(15 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 15 * 1024 * 1024)]
         public async Task<IActionResult> CreateDraft([FromForm] NewDraftRequest newDraftRequest)
         {
             var userId = await GetUserId();
@@ -62,6 +64,8 @@ namespace AstralDiaryApi.Controllers
 
         [HttpPut("update/{draftId}")]
         [Authorize]
+        [RequestSizeLimit(15 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 15 * 1024 * 1024)]
         public async Task<IActionResult> UpdateDraft(
             string draftId,
             [FromForm] UpdateDraftRequest updateDraftRequest
@@ -79,6 +83,8 @@ namespace AstralDiaryApi.Controllers
 
         [HttpPost("publish/{draftId}")]
         [Authorize]
+        [RequestSizeLimit(15 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 15 * 1024 * 1024)]
         public async Task<IActionResult> PublishDraft(
             string draftId,
             [FromForm] UpdateDraftRequest updateDraftRequest

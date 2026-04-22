@@ -31,15 +31,17 @@ namespace AstralDiaryApi.Controllers
         private string CronJobKey => _env.CronJobKey;
 
         [HttpPost("cleanup")]
-        public async Task<IActionResult> CleanupDatabase(HttpContext context)
+        public async Task<IActionResult> CleanupDatabase(
+            [FromHeader(Name = "X-API-Key")] string apiKey
+        )
         {
-            if (!context.Request.Headers.TryGetValue("CronJob-API-Key", out var providedKey))
+            if (String.IsNullOrEmpty(apiKey))
             {
                 _logger.LogWarning("Cleanup rejected: Missing CronJob-API-Key header");
                 return Unauthorized(new { error = "Missing API key" });
             }
 
-            if (!providedKey.Equals(CronJobKey))
+            if (!apiKey.Equals(CronJobKey))
             {
                 _logger.LogWarning("Cleanup rejected: Invalid CronJob-API-Key");
                 return Unauthorized(new { error = "Invalid API key" });
