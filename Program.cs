@@ -92,6 +92,9 @@ if (builder.Environment.IsProduction())
 if (builder.Environment.IsProduction())
 {
     var googleAdcJson = builder.Configuration["GoogleAdcJson"];
+    Console.WriteLine(
+        $"ADC Found. Length: {googleAdcJson.Length}. Starts with: {googleAdcJson.Substring(0, 10)}..."
+    );
     if (!string.IsNullOrEmpty(googleAdcJson))
     {
         FirebaseApp.Create(
