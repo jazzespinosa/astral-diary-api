@@ -23,20 +23,6 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Create Production Config
-        run: |
-          cat <<EOF> ./appsettings.Production.json
-          {
-            "OCI": {
-              "Region": "${{ secrets.OCI_REGION }}",
-              "ConnectionStringSecretId": "${{ secrets.OCI_CONN_STR_ID }}",
-              "GoogleAdcSecretId": "${{ secrets.OCI_GOOGLE_ID }}",
-              "PepperSecretId": "${{ secrets.OCI_PEPPER_ID }}",
-              "ConfigSecretId": "${{ secrets.OCI_CONFIG_ID }}"
-            }
-          }
-          EOF
-
       - name: Publish for Linux ARM64
         run: |
           dotnet publish --configuration Release --runtime linux-arm64 --self-contained false --output ./publish
