@@ -2,6 +2,7 @@
 using AstralDiaryApi.env;
 using AstralDiaryApi.Models.DTOs.Utility;
 using AstralDiaryApi.Services.Interfaces;
+using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,11 +12,17 @@ namespace AstralDiaryApi.Services.Implementations
     {
         private readonly AppDbContext _dbContext;
         private readonly MyEnvironment _env;
+        private readonly IConfiguration _configuration;
 
-        public UtilityService(AppDbContext dbContext, MyEnvironment env)
+        public UtilityService(
+            AppDbContext dbContext,
+            MyEnvironment env,
+            IConfiguration configuration
+        )
         {
             _dbContext = dbContext;
             _env = env;
+            _configuration = configuration;
         }
 
         public async Task<FeedbackResponse> TriggerEmailSend(
@@ -23,11 +30,30 @@ namespace AstralDiaryApi.Services.Implementations
             Guid userId
         )
         {
-            var db = new FirestoreDbBuilder
+            FirestoreDb db;
+
+            if (!string.IsNullOrEmpty(_configuration["GoogleAdcJson"]))
             {
-                ProjectId = "astral-diary",
-                DatabaseId = _env.FirestoreDatabaseId,
-            }.Build();
+                var googleAdcJson = _configuration["GoogleAdcJson"];
+                var googleCredential = CredentialFactory
+                    .FromJson<ServiceAccountCredential>(googleAdcJson)
+                    .ToGoogleCredential();
+
+                db = new FirestoreDbBuilder
+                {
+                    ProjectId = "astral-diary",
+                    DatabaseId = _env.FirestoreDatabaseId,
+                    GoogleCredential = googleCredential,
+                }.Build();
+            }
+            else
+            {
+                db = new FirestoreDbBuilder
+                {
+                    ProjectId = "astral-diary",
+                    DatabaseId = _env.FirestoreDatabaseId,
+                }.Build();
+            }
 
             var feedbackEmailRecipient = _env.FeedbackEmailRecipient;
             var cloudFirestoreDbLink = _env.CloudFirestoreDbLink;
