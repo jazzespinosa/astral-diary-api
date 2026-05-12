@@ -14,10 +14,10 @@ namespace AstralDiaryApi.Models.Entities
         [Column("user_id")]
         public Guid UserId { get; set; }
 
-        [Column("created_at", TypeName = "timestamp")]
+        [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
-        [Column("modified_at", TypeName = "timestamp")]
+        [Column("modified_at")]
         public DateTime ModifiedAt { get; set; }
 
         [Column("date", TypeName = "date")]

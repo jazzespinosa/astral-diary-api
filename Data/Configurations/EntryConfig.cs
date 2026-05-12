@@ -17,7 +17,16 @@ namespace AstralDiaryApi.Data.Configurations
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
             builder.Property(e => e.EntityId).HasMaxLength(25).IsRequired();
-            builder.Property(e => e.CreatedAt).HasDefaultValue(null).ValueGeneratedNever();
+            builder
+                .Property(e => e.CreatedAt)
+                .HasColumnType("timestamp")
+                .IsRequired()
+                .ValueGeneratedNever();
+            builder
+                .Property(e => e.ModifiedAt)
+                .HasColumnType("timestamp")
+                .IsRequired()
+                .ValueGeneratedNever();
             builder.ToTable(t =>
                 t.HasCheckConstraint(
                     "CK_Entry_DeletedAt_OnlyIf_IsDeleted",
